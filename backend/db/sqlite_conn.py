@@ -2,7 +2,7 @@ import sqlite3
 
 
 class SQLiteConnection:
-    def __init__(self, db_path="./data/app.db"):
+    def __init__(self, db_path="././data/app.db"):
         self.db_path = db_path
 
     def get_conn(self):
