@@ -19,7 +19,7 @@ def get_images():
 
     return [dict(image) for image in images]
      
-@generated_images_router.get("/generated_images/{id}")
+@generated_images_router.get("/generated_images/{image_id}")
 def get_image_by_id(image_id: int):
     image = generated_images_service.get_image_by_id(image_id)
 
