@@ -17,6 +17,7 @@ def get_templates():
 
     return [dict(template) for template in templates]
 
+
 @templates_router.get("/templates/{template_id}")
 def get_template_by_id(template_id: int):
     template = template_service.get_template_by_id(template_id)
