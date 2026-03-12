@@ -1,5 +1,7 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+from starlette.responses import FileResponse
 
+from app.backend.core.config import PROJECT_ROOT
 from app.backend.db.sqlite_conn import SQLiteConnection
 from app.backend.models.generated_images import GenerateImageRequest
 from app.backend.repositories.generated_images.generated_images_repo import (
@@ -27,10 +29,24 @@ def get_images():
 def get_image_by_id(image_id: int):
     image = generated_images_service.get_image_by_id(image_id)
 
-    return dict(image) if image else None
+    if not image:
+        raise HTTPException(status_code=404, detail="image not found")
+    return dict(image)
 
 
 @generated_images_router.post("/templates/{template_id}/generate")
 def generate_image(template_id: int, payload: GenerateImageRequest):
     image = generated_images_service.generate_image(template_id, payload)
+
     return dict(image)
+
+
+@generated_images_router.get("/images/{share_token}")
+def get_image_by_share_token(share_token: str):
+    image = generated_images_service.get_image_by_share_token(share_token)
+    if not image:
+        raise HTTPException(status_code=404, detail="image not found")
+
+    path = PROJECT_ROOT / image["image_path"]
+
+    return FileResponse(path)

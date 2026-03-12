@@ -3,13 +3,21 @@ from textwrap import wrap
 from uuid import uuid4
 
 from fastapi import HTTPException
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, UnidentifiedImageError
 
 from app.backend.core.config import BASE_DIR, GENERATED_IMAGES_DIR, PROJECT_ROOT
+from app.backend.repositories.generated_images.generated_images_repo import (
+    GeneratedImagesRepository,
+)
+from app.backend.repositories.templates.templates_repo import TemplateRepository
 
 
 class GeneratedImagesService:
-    def __init__(self, generated_images_repo, templates_repo):
+    def __init__(
+        self,
+        generated_images_repo: GeneratedImagesRepository,
+        templates_repo: TemplateRepository,
+    ):
         self.generated_images_repo = generated_images_repo
         self.templates_repo = templates_repo
 
@@ -30,7 +38,14 @@ class GeneratedImagesService:
 
         GENERATED_IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 
-        image = Image.open(template_path).convert("RGB")
+        try:
+            image = Image.open(template_path).convert("RGB")
+        except UnidentifiedImageError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail="Template image format is not supported. Use JPEG or PNG.",
+            ) from exc
+
         draw = ImageDraw.Draw(image)
         font = ImageFont.load_default()
 
@@ -91,3 +106,11 @@ class GeneratedImagesService:
             stroke_fill="black",
             align="center",
         )
+
+    def get_image_by_share_token(self, share_token: str):
+        image = self.generated_images_repo.get_image_by_share_token(share_token)
+
+        if not image:
+            raise HTTPException(status_code=404, detail="Image not found")
+
+        return image
