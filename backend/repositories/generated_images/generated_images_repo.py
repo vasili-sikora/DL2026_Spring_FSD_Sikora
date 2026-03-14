@@ -10,7 +10,7 @@ class GeneratedImagesRepository:
             cursor.execute(sql)
             return cursor.fetchall()
 
-    def get_image_by_id(self, id):
+    def get_image_by_id(self, image_id: int):
         sql = """SELECT * FROM generated_images WHERE id = ?"""
         with self.db_conn.get_conn() as conn:
             cursor = conn.cursor()

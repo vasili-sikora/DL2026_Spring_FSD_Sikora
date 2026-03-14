@@ -45,3 +45,4 @@ class TemplateRepository:
         with self.db_conn.get_conn() as conn:
             cursor = conn.execute(sql)
             return cursor.fetchall()
+        
