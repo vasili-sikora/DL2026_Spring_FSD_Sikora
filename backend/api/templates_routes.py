@@ -1,4 +1,9 @@
-from fastapi import APIRouter
+from pathlib import Path
+
+from fastapi import APIRouter, HTTPException
+from starlette.responses import FileResponse
+
+from app.backend.core.config import BASE_DIR, PROJECT_ROOT
 
 from app.backend.db.sqlite_conn import SQLiteConnection
 from app.backend.models.templates import TemplateCreate
@@ -24,6 +29,26 @@ def get_template_by_id(template_id: int):
     template = template_service.get_template_by_id(template_id)
 
     return dict(template) if template else None
+
+
+@templates_router.get("/templates/{template_id}/image")
+def get_template_image(template_id: int):
+    template = template_service.get_template_by_id(template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+
+    image_path = Path(template["image_path"])
+    if image_path.is_absolute():
+        resolved_path = image_path
+    else:
+        base_candidate = BASE_DIR / image_path
+        project_candidate = PROJECT_ROOT / image_path
+        resolved_path = base_candidate if base_candidate.exists() else project_candidate
+
+    if not resolved_path.exists():
+        raise HTTPException(status_code=404, detail="Template image file not found")
+
+    return FileResponse(resolved_path)
 
 
 @templates_router.post("/templates")

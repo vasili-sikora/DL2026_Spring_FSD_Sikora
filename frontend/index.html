@@ -29,7 +29,8 @@
                 <form id="generate-form" class="form">
                     <label>
                         Template
-                        <select id="template-select" required></select>
+                        <div id="template-picker" class="template-picker" role="radiogroup" aria-label="Template"></div>
+                        <input type="hidden" id="template-select" required />
                     </label>
                     <label>
                         Top text
@@ -50,6 +51,17 @@
                     <button type="submit">Generate</button>
                 </form>
                 <p id="generate-status" class="hint"></p>
+            </section>
+
+            <section class="card template-preview-panel">
+                <h2>Template Preview</h2>
+                <aside class="template-preview" aria-live="polite">
+                    <img
+                        id="template-preview-image"
+                        alt="Selected template preview"
+                    />
+                    <p id="template-preview-name" class="template-preview__name"></p>
+                </aside>
             </section>
 
             <section class="card wide">
