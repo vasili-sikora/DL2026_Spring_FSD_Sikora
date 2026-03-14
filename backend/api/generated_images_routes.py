@@ -30,7 +30,10 @@ generated_images_service = GeneratedImagesService(generated_images_repo, templat
 
 @generated_images_router.get("/generated_images")
 def get_images():
-    images = generated_images_service.get_all_images()
+    try:
+        images = generated_images_service.get_all_images()
+    except ImageNotFoundError as e:
+        raise HTTPException(status_code=404, detail="Images not found")
 
     return [dict(image) for image in images]
 

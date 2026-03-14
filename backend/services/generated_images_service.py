@@ -1,6 +1,4 @@
-from pathlib import Path
-
-from app.backend.core.config import BASE_DIR, GENERATED_IMAGES_DIR, PROJECT_ROOT
+from app.backend.core.config import BASE_DIR, GENERATED_IMAGES_DIR
 from app.backend.repositories.generated_images.generated_images_repo import (
     GeneratedImagesRepository,
 )
@@ -15,6 +13,7 @@ from app.backend.utils.image_generation import (
     TemplateImageReadError,
     render_generated_image,
 )
+from app.backend.utils.path_resolution import resolve_storage_path
 
 
 class GeneratedImagesService:
@@ -27,7 +26,10 @@ class GeneratedImagesService:
         self.templates_repo = templates_repo
 
     def get_all_images(self):
-        return self.generated_images_repo.get_all_images()
+        images = self.generated_images_repo.get_all_images()
+        if not images:
+            raise ImageNotFoundError("Images not found")
+        return images
 
     def get_image_by_id(self, image_id: int):
         image = self.generated_images_repo.get_image_by_id(image_id)
@@ -40,7 +42,7 @@ class GeneratedImagesService:
         if not template:
             raise TemplateNotFoundError("Template not found")
 
-        template_path = self._resolve_template_path(template["image_path"])
+        template_path = resolve_storage_path(template["image_path"])
         if not template_path.exists():
             raise TemplateImageFileNotFoundError("Template image file not found")
 
@@ -66,21 +68,6 @@ class GeneratedImagesService:
             }
         )
         return record
-
-    def _resolve_template_path(self, image_path):
-        candidate = Path(image_path)
-        if candidate.is_absolute():
-            return candidate
-
-        base_candidate = BASE_DIR / candidate
-        if base_candidate.exists():
-            return base_candidate
-
-        project_candidate = PROJECT_ROOT / candidate
-        if project_candidate.exists():
-            return project_candidate
-
-        return base_candidate
 
     def get_image_by_share_token(self, share_token: str):
         image = self.generated_images_repo.get_image_by_share_token(share_token)
