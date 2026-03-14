@@ -1,6 +1,8 @@
-from app.backend.core.config import DB_PATH
 import sqlite3
 from pathlib import Path
+
+from app.backend.core.config import DB_PATH
+
 
 class SQLiteConnection:
     def __init__(self, db_path=None):

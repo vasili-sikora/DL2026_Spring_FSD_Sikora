@@ -10,7 +10,17 @@ class TemplateRepository:
         with self.db_conn.get_conn() as conn:
             cursor = conn.cursor()
             cursor.execute(sql, (template["name"], template["image_path"]))
-            return cursor.lastrowid
+
+            cursor.execute(
+                """
+                        SELECT id, name, image_path, created_at
+                        FROM templates
+                        WHERE id = ?
+                        """,
+                (cursor.lastrowid,),
+            )
+
+            return cursor.fetchone()
 
     def get_template_by_id(self, template_id):
         sql = """SELECT id, name, image_path, created_at FROM templates WHERE id = ?"""
