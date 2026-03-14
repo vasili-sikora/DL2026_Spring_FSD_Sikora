@@ -1,8 +1,4 @@
 from pathlib import Path
-from textwrap import wrap
-from uuid import uuid4
-
-from PIL import Image, ImageDraw, ImageFont, UnidentifiedImageError
 
 from app.backend.core.config import BASE_DIR, GENERATED_IMAGES_DIR, PROJECT_ROOT
 from app.backend.repositories.generated_images.generated_images_repo import (
@@ -14,6 +10,10 @@ from app.backend.services.exceptions import (
     TemplateImageFileNotFoundError,
     TemplateImageFormatError,
     TemplateNotFoundError,
+)
+from app.backend.utils.image_generation import (
+    TemplateImageReadError,
+    render_generated_image,
 )
 
 
@@ -44,27 +44,17 @@ class GeneratedImagesService:
         if not template_path.exists():
             raise TemplateImageFileNotFoundError("Template image file not found")
 
-        GENERATED_IMAGES_DIR.mkdir(parents=True, exist_ok=True)
-
         try:
-            image = Image.open(template_path).convert("RGB")
-        except UnidentifiedImageError as exc:
+            share_token, output_path = render_generated_image(
+                template_path=template_path,
+                text_top=payload.text_top,
+                text_bottom=payload.text_bottom,
+                output_dir=GENERATED_IMAGES_DIR,
+            )
+        except TemplateImageReadError as exc:
             raise TemplateImageFormatError(
                 "Template image format is not supported. Use JPEG or PNG."
             ) from exc
-
-        draw = ImageDraw.Draw(image)
-        font = ImageFont.load_default()
-
-        self._draw_text_block(draw, image, payload.text_top, anchor="top", font=font)
-        self._draw_text_block(
-            draw, image, payload.text_bottom, anchor="bottom", font=font
-        )
-
-        share_token = uuid4().hex
-        output_name = f"{share_token}.jpg"
-        output_path = GENERATED_IMAGES_DIR / output_name
-        image.save(output_path, format="JPEG")
 
         record = self.generated_images_repo.create_image(
             {
@@ -91,28 +81,6 @@ class GeneratedImagesService:
             return project_candidate
 
         return base_candidate
-
-    def _draw_text_block(self, draw, image, text, anchor, font):
-        content = (text or "").strip()
-        if not content:
-            return
-
-        wrapped = "\n".join(wrap(content, width=24)) or content
-        bbox = draw.multiline_textbbox((0, 0), wrapped, font=font, stroke_width=2)
-        text_width = bbox[2] - bbox[0]
-        text_height = bbox[3] - bbox[1]
-        x = (image.width - text_width) / 2
-        y = 20 if anchor == "top" else image.height - text_height - 20
-
-        draw.multiline_text(
-            (x, y),
-            wrapped,
-            font=font,
-            fill="white",
-            stroke_width=2,
-            stroke_fill="black",
-            align="center",
-        )
 
     def get_image_by_share_token(self, share_token: str):
         image = self.generated_images_repo.get_image_by_share_token(share_token)
