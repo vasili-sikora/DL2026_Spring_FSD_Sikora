@@ -26,6 +26,7 @@ def get_template_by_id(template_id: int):
     return dict(template) if template else None
 
 
+# временный эндпоинт, потом надо будет убрать
 @templates_router.post("/templates")
 def create_template(payload: TemplateCreate):
     template = template_service.create_template(payload.model_dump())
