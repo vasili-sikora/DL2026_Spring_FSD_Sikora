@@ -12,3 +12,7 @@ class TemplateImageFileNotFoundError(Exception):
 
 class TemplateImageFormatError(Exception):
     pass
+
+
+class TemplateFontError(Exception):
+    pass

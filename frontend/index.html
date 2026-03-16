@@ -29,7 +29,13 @@
                 <form id="generate-form" class="form">
                     <label>
                         Template
-                        <select id="template-select" required></select>
+                        <div
+                            id="template-picker"
+                            class="template-picker"
+                            role="radiogroup"
+                            aria-label="Template"
+                        ></div>
+                        <input type="hidden" id="template-select" required />
                     </label>
                     <label>
                         Top text
@@ -47,9 +53,43 @@
                             placeholder="...IN PRODUCTION"
                         />
                     </label>
+                    <label>
+                        Font
+                        <select id="font-name">
+                            <option value="dejavu_sans" selected>
+                                DejaVu Sans
+                            </option>
+                            <option value="dejavu_serif">DejaVu Serif</option>
+                            <option value="dejavu_mono">DejaVu Mono</option>
+                        </select>
+                    </label>
+                    <label>
+                        Font size
+                        <input
+                            type="number"
+                            id="font-size"
+                            min="12"
+                            max="120"
+                            value="40"
+                        />
+                    </label>
                     <button type="submit">Generate</button>
                 </form>
                 <p id="generate-status" class="hint"></p>
+            </section>
+
+            <section class="card template-preview-panel">
+                <h2>Template Preview</h2>
+                <aside class="template-preview" aria-live="polite">
+                    <img
+                        id="template-preview-image"
+                        alt="Selected template preview"
+                    />
+                    <p
+                        id="template-preview-name"
+                        class="template-preview__name"
+                    ></p>
+                </aside>
             </section>
 
             <section class="card wide">

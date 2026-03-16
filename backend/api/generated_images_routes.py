@@ -14,6 +14,7 @@ from app.backend.repositories.generated_images.generated_images_repo import (
 from app.backend.repositories.templates.templates_repo import TemplateRepository
 from app.backend.services.exceptions import (
     ImageNotFoundError,
+    TemplateFontError,
     TemplateImageFileNotFoundError,
     TemplateImageFormatError,
     TemplateNotFoundError,
@@ -30,7 +31,10 @@ generated_images_service = GeneratedImagesService(generated_images_repo, templat
 
 @generated_images_router.get("/generated_images")
 def get_images():
-    images = generated_images_service.get_all_images()
+    try:
+        images = generated_images_service.get_all_images()
+    except ImageNotFoundError as e:
+        raise HTTPException(status_code=404, detail="Images not found")
 
     return [dict(image) for image in images]
 
@@ -56,7 +60,7 @@ def get_image_by_id(image_id: int):
     responses={
         400: {
             "model": ErrorResponse,
-            "description": "Template image format is not supported",
+            "description": "Template image format/font is not supported",
         },
         404: {
             "model": ErrorResponse,
@@ -72,6 +76,8 @@ def generate_image(template_id: int, payload: GenerateImageRequest):
     except TemplateImageFileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except TemplateImageFormatError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except TemplateFontError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return GeneratedImageResponse(**dict(image))
 

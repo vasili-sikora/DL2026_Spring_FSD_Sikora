@@ -1,8 +1,12 @@
 const templateSelect = document.getElementById("template-select");
+const templatePicker = document.getElementById("template-picker");
+const templatePreviewImage = document.getElementById("template-preview-image");
+const templatePreviewName = document.getElementById("template-preview-name");
 const generateForm = document.getElementById("generate-form");
 const generateStatus = document.getElementById("generate-status");
 const generatedList = document.getElementById("generated-list");
 const toast = document.getElementById("toast");
+let templatesById = new Map();
 
 function showToast(message, isError = false) {
   toast.textContent = message;
@@ -29,24 +33,65 @@ async function api(path, options = {}) {
   return res.json();
 }
 
+function selectTemplate(templateId) {
+  templateSelect.value = String(templateId || "");
+
+  for (const card of templatePicker.querySelectorAll(".template-card")) {
+    const isSelected = card.dataset.templateId === templateSelect.value;
+    card.classList.toggle("selected", isSelected);
+    card.setAttribute("aria-checked", String(isSelected));
+  }
+
+  const selectedTemplate = templatesById.get(Number(templateId));
+  if (!selectedTemplate) {
+    templatePreviewImage.removeAttribute("src");
+    templatePreviewName.textContent = "Template not selected";
+    return;
+  }
+
+  templatePreviewImage.src = `/templates/${selectedTemplate.id}/image`;
+  templatePreviewImage.alt = selectedTemplate.name;
+  templatePreviewName.textContent = selectedTemplate.name;
+}
+
 function renderTemplateOptions(templates) {
-  templateSelect.innerHTML = "";
+  templatePicker.innerHTML = "";
+  templateSelect.value = "";
+  templatesById = new Map(templates.map((template) => [template.id, template]));
+
   if (!templates.length) {
-    const option = document.createElement("option");
-    option.value = "";
-    option.textContent = "No templates available";
-    option.disabled = true;
-    option.selected = true;
-    templateSelect.append(option);
+    const empty = document.createElement("p");
+    empty.className = "template-empty";
+    empty.textContent = "No templates available";
+    templatePicker.append(empty);
+    templatePreviewImage.removeAttribute("src");
+    templatePreviewName.textContent = "No templates available";
     return;
   }
 
   for (const template of templates) {
-    const option = document.createElement("option");
-    option.value = template.id;
-    option.textContent = `${template.id}: ${template.name}`;
-    templateSelect.append(option);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "template-card";
+    button.dataset.templateId = String(template.id);
+    button.setAttribute("role", "radio");
+    button.setAttribute("aria-checked", "false");
+
+    const image = document.createElement("img");
+    image.src = `/templates/${template.id}/image`;
+    image.alt = template.name;
+    image.loading = "lazy";
+
+    const title = document.createElement("span");
+    title.className = "template-card__name";
+    title.textContent = template.name;
+
+    button.append(image, title);
+    button.addEventListener("click", () => selectTemplate(template.id));
+    templatePicker.append(button);
   }
+
+  selectTemplate(templates[0].id);
 }
 
 function renderGeneratedImages(images) {
@@ -103,6 +148,8 @@ generateForm.addEventListener("submit", async (event) => {
   const payload = {
     text_top: document.getElementById("top-text").value.trim(),
     text_bottom: document.getElementById("bottom-text").value.trim(),
+    font_name: document.getElementById("font-name").value,
+    font_size: Number(document.getElementById("font-size").value),
   };
 
   const submitButton = generateForm.querySelector("button[type='submit']");
@@ -117,6 +164,7 @@ generateForm.addEventListener("submit", async (event) => {
     showToast(`Image #${created.id} generated`);
     generateStatus.textContent = `Generated image #${created.id} (token: ${created.share_token})`;
     generateForm.reset();
+    selectTemplate(templateId);
     await loadGeneratedImages();
   } catch (error) {
     generateStatus.textContent = `Generate failed: ${error.message}`;
