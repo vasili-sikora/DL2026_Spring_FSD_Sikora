@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, HTTPException, Request, Response
 from starlette.responses import FileResponse
 
 from app.backend.core.config import PROJECT_ROOT
+from app.backend.core.rate_limit import limiter
 from app.backend.db.sqlite_conn import SQLiteConnection
 from app.backend.models.generated_images import (
     ErrorResponse,
@@ -68,7 +69,8 @@ def get_image_by_id(image_id: int):
         },
     },
 )
-def generate_image(template_id: int, payload: GenerateImageRequest):
+@limiter.limit("10/minute")
+def generate_image(request: Request, template_id: int, payload: GenerateImageRequest):
     try:
         image = generated_images_service.generate_image(template_id, payload)
     except TemplateNotFoundError as exc:
@@ -96,7 +98,8 @@ def generate_image(template_id: int, payload: GenerateImageRequest):
         },
     },
 )
-def preview_image(template_id: int, payload: GenerateImageRequest):
+@limiter.limit("50/minute")
+def preview_image(request: Request, template_id: int, payload: GenerateImageRequest):
     try:
         image_bytes = generated_images_service.preview_image(template_id, payload)
     except TemplateNotFoundError as exc:
