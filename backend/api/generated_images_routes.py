@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from starlette.responses import FileResponse
 
 from app.backend.core.config import PROJECT_ROOT
@@ -80,6 +80,34 @@ def generate_image(template_id: int, payload: GenerateImageRequest):
     except TemplateFontError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return GeneratedImageResponse(**dict(image))
+
+
+@generated_images_router.post(
+    "/templates/{template_id}/preview",
+    responses={
+        200: {"description": "Rendered preview image (JPEG)"},
+        400: {
+            "model": ErrorResponse,
+            "description": "Template image format/font is not supported",
+        },
+        404: {
+            "model": ErrorResponse,
+            "description": "Template or template image file not found",
+        },
+    },
+)
+def preview_image(template_id: int, payload: GenerateImageRequest):
+    try:
+        image_bytes = generated_images_service.preview_image(template_id, payload)
+    except TemplateNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except TemplateImageFileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except TemplateImageFormatError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except TemplateFontError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return Response(content=image_bytes, media_type="image/jpeg")
 
 
 @generated_images_router.get("/images/{share_token}")

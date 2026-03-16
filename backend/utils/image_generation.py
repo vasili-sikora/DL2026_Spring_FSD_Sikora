@@ -32,6 +32,49 @@ def render_generated_image(
 ) -> tuple[str, Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    image = _render_image(
+        template_path=template_path,
+        text_top=text_top,
+        text_bottom=text_bottom,
+        font_name=font_name,
+        font_size=font_size,
+    )
+
+    share_token = uuid4().hex
+    output_path = output_dir / f"{share_token}.jpg"
+    image.save(output_path, format="JPEG")
+    return share_token, output_path
+
+
+def render_preview_image_bytes(
+    template_path: Path,
+    text_top: str,
+    text_bottom: str,
+    font_name: str,
+    font_size: int,
+) -> bytes:
+    image = _render_image(
+        template_path=template_path,
+        text_top=text_top,
+        text_bottom=text_bottom,
+        font_name=font_name,
+        font_size=font_size,
+    )
+
+    from io import BytesIO
+
+    buffer = BytesIO()
+    image.save(buffer, format="JPEG")
+    return buffer.getvalue()
+
+
+def _render_image(
+    template_path: Path,
+    text_top: str,
+    text_bottom: str,
+    font_name: str,
+    font_size: int,
+):
     try:
         image = Image.open(template_path).convert("RGB")
     except UnidentifiedImageError as exc:
@@ -43,10 +86,7 @@ def render_generated_image(
     _draw_text_block(draw, image, text_top, anchor="top", font=font)
     _draw_text_block(draw, image, text_bottom, anchor="bottom", font=font)
 
-    share_token = uuid4().hex
-    output_path = output_dir / f"{share_token}.jpg"
-    image.save(output_path, format="JPEG")
-    return share_token, output_path
+    return image
 
 
 def _load_font(font_name: str, font_size: int):

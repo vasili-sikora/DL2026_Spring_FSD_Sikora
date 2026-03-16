@@ -2,11 +2,15 @@ const templateSelect = document.getElementById("template-select");
 const templatePicker = document.getElementById("template-picker");
 const templatePreviewImage = document.getElementById("template-preview-image");
 const templatePreviewName = document.getElementById("template-preview-name");
+const previewDownload = document.getElementById("preview-download");
 const generateForm = document.getElementById("generate-form");
 const generateStatus = document.getElementById("generate-status");
 const generatedList = document.getElementById("generated-list");
 const toast = document.getElementById("toast");
 let templatesById = new Map();
+let previewObjectUrl = null;
+let previewDebounceTimer = null;
+let previewRequestController = null;
 
 function showToast(message, isError = false) {
   toast.textContent = message;
@@ -33,6 +37,87 @@ async function api(path, options = {}) {
   return res.json();
 }
 
+async function requestPreviewImage(templateId, payload) {
+  if (previewRequestController) {
+    previewRequestController.abort();
+  }
+
+  previewRequestController = new AbortController();
+  const res = await fetch(`/templates/${templateId}/preview`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    signal: previewRequestController.signal,
+  });
+
+  if (!res.ok) {
+    let errorDetail = `${res.status} ${res.statusText}`;
+    try {
+      const body = await res.json();
+      errorDetail = body.detail || JSON.stringify(body);
+    } catch {
+      // keep fallback
+    }
+    throw new Error(errorDetail);
+  }
+
+  return res.blob();
+}
+
+function buildGeneratePayload() {
+  return {
+    text_top: document.getElementById("top-text").value.trim(),
+    text_bottom: document.getElementById("bottom-text").value.trim(),
+    font_name: document.getElementById("font-name").value,
+    font_size: Number(document.getElementById("font-size").value),
+  };
+}
+
+function updatePreviewDownloadState(enabled) {
+  previewDownload.classList.toggle("disabled", !enabled);
+  previewDownload.setAttribute("aria-disabled", String(!enabled));
+}
+
+previewDownload.addEventListener("click", (event) => {
+  if (previewDownload.getAttribute("aria-disabled") === "true") {
+    event.preventDefault();
+  }
+});
+
+async function refreshPreview() {
+  const templateId = Number(templateSelect.value);
+  if (!templateId) {
+    return;
+  }
+
+  try {
+    const blob = await requestPreviewImage(templateId, buildGeneratePayload());
+    if (previewObjectUrl) {
+      URL.revokeObjectURL(previewObjectUrl);
+    }
+    previewObjectUrl = URL.createObjectURL(blob);
+    templatePreviewImage.src = previewObjectUrl;
+    previewDownload.href = previewObjectUrl;
+    previewDownload.download = `preview-template-${templateId}.jpg`;
+    updatePreviewDownloadState(true);
+  } catch (error) {
+    if (error.name === "AbortError") {
+      return;
+    }
+    updatePreviewDownloadState(false);
+    generateStatus.textContent = `Preview failed: ${error.message}`;
+  }
+}
+
+function schedulePreview(delayMs = 250) {
+  if (previewDebounceTimer) {
+    clearTimeout(previewDebounceTimer);
+  }
+  previewDebounceTimer = setTimeout(() => {
+    refreshPreview();
+  }, delayMs);
+}
+
 function selectTemplate(templateId) {
   templateSelect.value = String(templateId || "");
 
@@ -46,12 +131,15 @@ function selectTemplate(templateId) {
   if (!selectedTemplate) {
     templatePreviewImage.removeAttribute("src");
     templatePreviewName.textContent = "Template not selected";
+    updatePreviewDownloadState(false);
     return;
   }
 
   templatePreviewImage.src = `/templates/${selectedTemplate.id}/image`;
   templatePreviewImage.alt = selectedTemplate.name;
   templatePreviewName.textContent = selectedTemplate.name;
+  updatePreviewDownloadState(false);
+  schedulePreview(0);
 }
 
 function renderTemplateOptions(templates) {
@@ -114,6 +202,7 @@ function renderGeneratedImages(images) {
       <strong>#${image.id}</strong>
       <span>Template: ${image.template_id}</span>
       <span>Token: ${image.share_token}</span>
+      <a class="download-link" href="/images/${image.share_token}" download="generated-${image.id}.jpg">Download</a>
     `;
     card.append(img, meta);
     generatedList.append(card);
@@ -145,12 +234,7 @@ generateForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  const payload = {
-    text_top: document.getElementById("top-text").value.trim(),
-    text_bottom: document.getElementById("bottom-text").value.trim(),
-    font_name: document.getElementById("font-name").value,
-    font_size: Number(document.getElementById("font-size").value),
-  };
+  const payload = buildGeneratePayload();
 
   const submitButton = generateForm.querySelector("button[type='submit']");
   submitButton.disabled = true;
@@ -164,6 +248,8 @@ generateForm.addEventListener("submit", async (event) => {
     showToast(`Image #${created.id} generated`);
     generateStatus.textContent = `Generated image #${created.id} (token: ${created.share_token})`;
     generateForm.reset();
+    document.getElementById("font-name").value = "dejavu_sans";
+    document.getElementById("font-size").value = 40;
     selectTemplate(templateId);
     await loadGeneratedImages();
   } catch (error) {
@@ -174,6 +260,15 @@ generateForm.addEventListener("submit", async (event) => {
     submitButton.textContent = "Generate";
   }
 });
+
+for (const id of ["top-text", "bottom-text", "font-name", "font-size"]) {
+  document
+    .getElementById(id)
+    .addEventListener("input", () => schedulePreview(220));
+  document
+    .getElementById(id)
+    .addEventListener("change", () => schedulePreview(120));
+}
 
 async function bootstrap() {
   try {

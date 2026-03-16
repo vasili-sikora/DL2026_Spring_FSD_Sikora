@@ -14,6 +14,7 @@ from app.backend.utils.image_generation import (
     TemplateFontReadError,
     TemplateImageReadError,
     render_generated_image,
+    render_preview_image_bytes,
 )
 from app.backend.utils.path_resolution import resolve_storage_path
 
@@ -40,13 +41,7 @@ class GeneratedImagesService:
         return image
 
     def generate_image(self, template_id: int, payload):
-        template = self.templates_repo.get_template_by_id(template_id)
-        if not template:
-            raise TemplateNotFoundError("Template not found")
-
-        template_path = resolve_storage_path(template["image_path"])
-        if not template_path.exists():
-            raise TemplateImageFileNotFoundError("Template image file not found")
+        template_path = self._get_template_image_path(template_id)
 
         try:
             share_token, output_path = render_generated_image(
@@ -74,6 +69,34 @@ class GeneratedImagesService:
             }
         )
         return record
+
+    def preview_image(self, template_id: int, payload) -> bytes:
+        template_path = self._get_template_image_path(template_id)
+
+        try:
+            return render_preview_image_bytes(
+                template_path=template_path,
+                text_top=payload.text_top,
+                text_bottom=payload.text_bottom,
+                font_name=payload.font_name,
+                font_size=payload.font_size,
+            )
+        except TemplateImageReadError as exc:
+            raise TemplateImageFormatError(
+                "Template image format is not supported. Use JPEG or PNG."
+            ) from exc
+        except TemplateFontReadError as exc:
+            raise TemplateFontError(str(exc)) from exc
+
+    def _get_template_image_path(self, template_id: int):
+        template = self.templates_repo.get_template_by_id(template_id)
+        if not template:
+            raise TemplateNotFoundError("Template not found")
+
+        template_path = resolve_storage_path(template["image_path"])
+        if not template_path.exists():
+            raise TemplateImageFileNotFoundError("Template image file not found")
+        return template_path
 
     def get_image_by_share_token(self, share_token: str):
         image = self.generated_images_repo.get_image_by_share_token(share_token)
