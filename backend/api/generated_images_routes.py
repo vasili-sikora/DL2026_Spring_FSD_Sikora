@@ -33,7 +33,7 @@ generated_images_service = GeneratedImagesService(generated_images_repo, templat
 def get_images():
     try:
         images = generated_images_service.get_all_images()
-    except ImageNotFoundError as e:
+    except ImageNotFoundError:
         raise HTTPException(status_code=404, detail="Images not found")
 
     return [dict(image) for image in images]

@@ -6,3 +6,5 @@ data/
 config.py
 .ruff_cache/
 .ruff_cache
+.pytest_cache
+/tests
