@@ -11,104 +11,205 @@
             href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
             rel="stylesheet"
         />
-        <link rel="stylesheet" href="/static/styles.css" />
+        <link rel="stylesheet" href="/static/styles.css?v=20260317-6" />
     </head>
     <body>
         <div class="bg-grid"></div>
-        <header class="hero">
-            <p class="kicker">Template Generator</p>
-            <h1>DevCraft Meme Studio</h1>
-            <p class="subtitle">
-                Pick a template, add captions, and generate an image you can
-                share by token.
-            </p>
+
+        <header class="topbar">
+            <div class="brand">
+                <p class="kicker">Template Generator</p>
+                <h1>DevCraft Meme Studio</h1>
+            </div>
+            <nav class="site-nav" aria-label="Site navigation">
+                <a id="nav-catalog" class="nav-link active" href="#catalog"
+                    >Catalog</a
+                >
+                <a id="nav-generate" class="nav-link" href="#generate"
+                    >Generate</a
+                >
+                <a id="nav-profile" class="nav-link hidden" href="#profile"
+                    >Profile</a
+                >
+            </nav>
+            <div class="auth-panel">
+                <span id="top-user-label" class="user-label">Guest</span>
+                <button
+                    id="theme-toggle"
+                    type="button"
+                    class="theme-toggle"
+                    aria-label="Switch theme"
+                    title="Switch theme"
+                ></button>
+                <button id="nav-login" type="button" class="secondary">
+                    Login
+                </button>
+                <button id="nav-register" type="button" class="secondary">
+                    Register
+                </button>
+                <button id="nav-logout" type="button" class="secondary hidden">
+                    Logout
+                </button>
+            </div>
         </header>
 
-        <main class="layout">
-            <section class="card">
-                <h2>Generate Image</h2>
-                <form id="generate-form" class="form">
-                    <label>
-                        Template
-                        <div
-                            id="template-picker"
-                            class="template-picker"
-                            role="radiogroup"
-                            aria-label="Template"
-                        ></div>
-                        <input type="hidden" id="template-select" required />
-                    </label>
-                    <label>
-                        Top text
-                        <input
-                            type="text"
-                            id="top-text"
-                            placeholder="WHEN THE BUG IS..."
-                        />
-                    </label>
-                    <label>
-                        Bottom text
-                        <input
-                            type="text"
-                            id="bottom-text"
-                            placeholder="...IN PRODUCTION"
-                        />
-                    </label>
-                    <label>
-                        Font
-                        <select id="font-name">
-                            <option value="dejavu_sans" selected>
-                                DejaVu Sans
-                            </option>
-                            <option value="dejavu_serif">DejaVu Serif</option>
-                            <option value="dejavu_mono">DejaVu Mono</option>
-                        </select>
-                    </label>
-                    <label>
-                        Font size
-                        <input
-                            type="number"
-                            id="font-size"
-                            min="12"
-                            max="120"
-                            value="40"
-                        />
-                    </label>
-                    <button type="submit">Generate</button>
-                </form>
-                <p id="generate-status" class="hint"></p>
+        <main class="page-container">
+            <section id="page-catalog" class="page active">
+                <p class="subtitle">Browse all available templates.</p>
+                <section class="card">
+                    <h2>All Templates</h2>
+                    <div id="catalog-list" class="catalog-list"></div>
+                </section>
             </section>
 
-            <section class="card template-preview-panel">
-                <h2>Template Preview</h2>
-                <aside class="template-preview" aria-live="polite">
-                    <img
-                        id="template-preview-image"
-                        alt="Selected template preview"
-                    />
-                    <p
-                        id="template-preview-name"
-                        class="template-preview__name"
-                    ></p>
-                    <a
-                        id="preview-download"
-                        class="download-button disabled"
-                        href="#"
-                        download="preview.jpg"
-                        aria-disabled="true"
-                    >
-                        Download Preview
-                    </a>
-                </aside>
+            <section id="page-generate" class="page">
+                <p class="subtitle">
+                    Pick a template, add captions, and generate an image you can
+                    share.
+                </p>
+                <div class="layout">
+                    <section class="card">
+                        <h2>Generate Image</h2>
+                        <form id="generate-form" class="form">
+                            <label>
+                                Template
+                                <div
+                                    id="template-picker"
+                                    class="template-picker"
+                                    role="radiogroup"
+                                    aria-label="Template"
+                                ></div>
+                                <input
+                                    type="hidden"
+                                    id="template-select"
+                                    required
+                                />
+                            </label>
+                            <label>
+                                Top text
+                                <input
+                                    type="text"
+                                    id="top-text"
+                                    placeholder="WHEN THE BUG IS..."
+                                />
+                            </label>
+                            <label>
+                                Bottom text
+                                <input
+                                    type="text"
+                                    id="bottom-text"
+                                    placeholder="...IN PRODUCTION"
+                                />
+                            </label>
+                            <label>
+                                Font
+                                <select id="font-name">
+                                    <option value="dejavu_sans" selected>
+                                        DejaVu Sans
+                                    </option>
+                                    <option value="dejavu_serif">
+                                        DejaVu Serif
+                                    </option>
+                                    <option value="dejavu_mono">
+                                        DejaVu Mono
+                                    </option>
+                                </select>
+                            </label>
+                            <label>
+                                Font size
+                                <input
+                                    type="number"
+                                    id="font-size"
+                                    min="12"
+                                    max="120"
+                                    value="40"
+                                />
+                            </label>
+                            <button type="submit">Generate</button>
+                        </form>
+                        <p id="generate-status" class="hint"></p>
+                    </section>
+
+                    <section class="card template-preview-panel">
+                        <h2>Preview</h2>
+                        <aside class="template-preview" aria-live="polite">
+                            <img
+                                id="template-preview-image"
+                                alt="Selected template preview"
+                            />
+                            <p
+                                id="template-preview-name"
+                                class="template-preview__name"
+                            ></p>
+                            <a
+                                id="preview-download"
+                                class="download-button disabled"
+                                href="#"
+                                download="preview.jpg"
+                                aria-disabled="true"
+                            >
+                                Download Preview
+                            </a>
+                        </aside>
+                    </section>
+                </div>
             </section>
 
-            <section class="card wide">
-                <h2>Generated Images</h2>
-                <div id="generated-list" class="gallery"></div>
+            <section id="page-profile" class="page">
+                <div class="layout single-column">
+                    <section class="card">
+                        <h2>User Profile</h2>
+                        <p id="profile-status" class="hint">
+                            Login to view your generated images and share links.
+                        </p>
+                    </section>
+                    <section class="card">
+                        <h2>Generated Images</h2>
+                        <div id="generated-list" class="gallery"></div>
+                    </section>
+                </div>
             </section>
         </main>
 
+        <div id="auth-modal" class="modal hidden" aria-hidden="true">
+            <div class="modal-backdrop" id="auth-modal-backdrop"></div>
+            <section
+                class="modal-card"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="auth-modal-title"
+            >
+                <h2 id="auth-modal-title">Login</h2>
+                <form id="auth-form" class="form">
+                    <label>
+                        Email
+                        <input
+                            type="email"
+                            id="auth-email"
+                            placeholder="you@example.com"
+                            required
+                        />
+                    </label>
+                    <label>
+                        Password
+                        <input
+                            type="password"
+                            id="auth-password"
+                            placeholder="At least 8 characters"
+                            required
+                            minlength="8"
+                        />
+                    </label>
+                    <button id="auth-submit" type="submit">Login</button>
+                </form>
+                <p id="auth-status" class="hint">Not logged in</p>
+                <button id="auth-close" type="button" class="secondary">
+                    Close
+                </button>
+            </section>
+        </div>
+
         <div id="toast" class="toast" aria-live="polite"></div>
-        <script src="/static/app.js" defer></script>
+        <script src="/static/app.js?v=20260317-6" defer></script>
     </body>
 </html>
