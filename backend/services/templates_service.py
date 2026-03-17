@@ -1,4 +1,4 @@
-from app.backend.repositories.templates.templates_repo import TemplateRepository
+from app.backend.repositories.templates_repo import TemplateRepository
 
 
 class TemplateService:
@@ -8,6 +8,8 @@ class TemplateService:
     def create_template(self, template):
         if not template["name"]:
             raise ValueError("Template name required")
+        if not template["image_name"].endswith((".jpeg", ".png", "jpg")):
+            raise ValueError("Incorrect file format")
 
         return self.repo.create_template(template)
 

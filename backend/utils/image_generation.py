@@ -1,3 +1,4 @@
+from io import BytesIO
 from pathlib import Path
 from textwrap import wrap
 from uuid import uuid4
@@ -60,8 +61,6 @@ def render_preview_image_bytes(
         font_name=font_name,
         font_size=font_size,
     )
-
-    from io import BytesIO
 
     buffer = BytesIO()
     image.save(buffer, format="JPEG")

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from app.backend.core.config import BASE_DIR, PROJECT_ROOT
+from app.backend.core.config import BASE_DIR
 
 
 def resolve_storage_path(path_value: str | Path) -> Path:
@@ -11,9 +11,5 @@ def resolve_storage_path(path_value: str | Path) -> Path:
     base_candidate = BASE_DIR / candidate
     if base_candidate.exists():
         return base_candidate
-
-    project_candidate = PROJECT_ROOT / candidate
-    if project_candidate.exists():
-        return project_candidate
 
     return base_candidate

@@ -1,8 +1,8 @@
 from app.backend.core.config import BASE_DIR, GENERATED_IMAGES_DIR
-from app.backend.repositories.generated_images.generated_images_repo import (
+from app.backend.repositories.generated_images_repo import (
     GeneratedImagesRepository,
 )
-from app.backend.repositories.templates.templates_repo import TemplateRepository
+from app.backend.repositories.templates_repo import TemplateRepository
 from app.backend.services.exceptions import (
     ImageNotFoundError,
     TemplateFontError,

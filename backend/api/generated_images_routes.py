@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request, Response
 from starlette.responses import FileResponse
 
-from app.backend.core.config import PROJECT_ROOT
+from app.backend.core.config import BASE_DIR
 from app.backend.core.rate_limit import limiter
 from app.backend.db.sqlite_conn import SQLiteConnection
 from app.backend.models.generated_images import (
@@ -9,10 +9,10 @@ from app.backend.models.generated_images import (
     GeneratedImageResponse,
     GenerateImageRequest,
 )
-from app.backend.repositories.generated_images.generated_images_repo import (
+from app.backend.repositories.generated_images_repo import (
     GeneratedImagesRepository,
 )
-from app.backend.repositories.templates.templates_repo import TemplateRepository
+from app.backend.repositories.templates_repo import TemplateRepository
 from app.backend.services.exceptions import (
     ImageNotFoundError,
     TemplateFontError,
@@ -120,6 +120,6 @@ def get_image_by_share_token(share_token: str):
     except ImageNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
-    path = PROJECT_ROOT / image["image_path"]
+    path = BASE_DIR / image["image_path"]
 
     return FileResponse(path)

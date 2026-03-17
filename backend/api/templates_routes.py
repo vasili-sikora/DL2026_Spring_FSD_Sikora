@@ -3,7 +3,7 @@ from starlette.responses import FileResponse
 
 from app.backend.db.sqlite_conn import SQLiteConnection
 from app.backend.models.templates import TemplateCreate
-from app.backend.repositories.templates.templates_repo import TemplateRepository
+from app.backend.repositories.templates_repo import TemplateRepository
 from app.backend.services.templates_service import TemplateService
 from app.backend.utils.path_resolution import resolve_storage_path
 
@@ -45,5 +45,8 @@ def get_template_image(template_id: int):
 
 @templates_router.post("/templates")
 def create_template(payload: TemplateCreate):
-    template = template_service.create_template(payload.model_dump())
+    try:
+        template = template_service.create_template(payload.model_dump())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return dict(template)

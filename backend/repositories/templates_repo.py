@@ -1,3 +1,4 @@
+from app.backend.core.config import TEMPLATES_DIR
 from app.backend.db.sqlite_conn import SQLiteConnection
 
 
@@ -8,8 +9,10 @@ class TemplateRepository:
     def create_template(self, template):
         sql = """INSERT INTO templates (name, image_path) VALUES (?, ?)"""
         with self.db_conn.get_conn() as conn:
+            path = f"{TEMPLATES_DIR}/{template['image_name']}"
+
             cursor = conn.cursor()
-            cursor.execute(sql, (template["name"], template["image_path"]))
+            cursor.execute(sql, (template["name"], path))
 
             cursor.execute(
                 """
