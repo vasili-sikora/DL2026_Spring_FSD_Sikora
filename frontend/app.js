@@ -30,6 +30,9 @@ const authClose = document.getElementById("auth-close");
 const authForm = document.getElementById("auth-form");
 const authEmail = document.getElementById("auth-email");
 const authPassword = document.getElementById("auth-password");
+const authConfirmWrap = document.getElementById("auth-confirm-wrap");
+const authConfirmPassword = document.getElementById("auth-confirm-password");
+const authTogglePassword = document.getElementById("auth-toggle-password");
 const authSubmit = document.getElementById("auth-submit");
 const authStatus = document.getElementById("auth-status");
 
@@ -39,6 +42,7 @@ let previewDebounceTimer = null;
 let previewRequestController = null;
 let authMode = "login";
 let currentUser = null;
+let isPasswordVisible = false;
 const THEME_STORAGE_KEY = "dc_theme_v3";
 
 function showToast(message, isError = false) {
@@ -46,6 +50,22 @@ function showToast(message, isError = false) {
   toast.classList.toggle("error", isError);
   toast.classList.add("show");
   setTimeout(() => toast.classList.remove("show"), 2600);
+}
+
+function extractErrorDetail(body, fallback) {
+  if (!body || body.detail == null) {
+    return fallback;
+  }
+  if (typeof body.detail === "string") {
+    return body.detail;
+  }
+  if (Array.isArray(body.detail) && body.detail.length) {
+    const first = body.detail[0];
+    if (first && typeof first === "object" && typeof first.msg === "string") {
+      return first.msg;
+    }
+  }
+  return JSON.stringify(body.detail);
 }
 
 function loadStoredUser() {
@@ -90,6 +110,25 @@ function setAuthMode(mode) {
   const isLogin = mode === "login";
   authModalTitle.textContent = isLogin ? "Login" : "Register";
   authSubmit.textContent = isLogin ? "Login" : "Register";
+  authConfirmWrap.classList.toggle("hidden", isLogin);
+  authConfirmPassword.required = !isLogin;
+  authConfirmPassword.value = "";
+  setPasswordVisibility(false);
+}
+
+function setPasswordVisibility(visible) {
+  isPasswordVisible = visible;
+  const inputType = visible ? "text" : "password";
+  authPassword.type = inputType;
+  authConfirmPassword.type = inputType;
+  const nextAction = visible ? "Hide password" : "Show password";
+  authTogglePassword.setAttribute("aria-label", nextAction);
+  authTogglePassword.setAttribute("title", nextAction);
+  authTogglePassword.classList.toggle("visible", visible);
+}
+
+function togglePasswordVisibility() {
+  setPasswordVisibility(!isPasswordVisible);
 }
 
 function openAuthModal(mode) {
@@ -165,7 +204,7 @@ async function api(path, options = {}) {
     let errorDetail = `${res.status} ${res.statusText}`;
     try {
       const body = await res.json();
-      errorDetail = body.detail || JSON.stringify(body);
+      errorDetail = extractErrorDetail(body, errorDetail);
     } catch {
       // keep fallback text
     }
@@ -191,7 +230,7 @@ async function requestPreviewImage(templateId, payload) {
     let errorDetail = `${res.status} ${res.statusText}`;
     try {
       const body = await res.json();
-      errorDetail = body.detail || JSON.stringify(body);
+      errorDetail = extractErrorDetail(body, errorDetail);
     } catch {
       // keep fallback
     }
@@ -495,6 +534,16 @@ authModalBackdrop.addEventListener("click", closeAuthModal);
 
 authForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+
+  if (
+    authMode === "register" &&
+    authPassword.value !== authConfirmPassword.value
+  ) {
+    authStatus.textContent = "Passwords do not match";
+    showToast("Passwords do not match", true);
+    return;
+  }
+
   const payload = {
     email: authEmail.value.trim(),
     password: authPassword.value,
@@ -515,6 +564,7 @@ authForm.addEventListener("submit", async (event) => {
     renderAuthState();
     renderPage();
     authPassword.value = "";
+    authConfirmPassword.value = "";
     authStatus.textContent = `Logged in as ${user.email}`;
     showToast(authMode === "login" ? "Login successful" : "Account created");
     closeAuthModal();
@@ -526,6 +576,8 @@ authForm.addEventListener("submit", async (event) => {
     authSubmit.textContent = authMode === "login" ? "Login" : "Register";
   }
 });
+
+authTogglePassword.addEventListener("click", togglePasswordVisibility);
 
 async function bootstrap() {
   applyTheme(loadStoredTheme());

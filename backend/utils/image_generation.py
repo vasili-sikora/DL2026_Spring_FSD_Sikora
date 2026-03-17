@@ -1,6 +1,7 @@
 from io import BytesIO
 from pathlib import Path
 from textwrap import wrap
+from typing import Final, Literal
 from uuid import uuid4
 
 from PIL import Image, ImageDraw, ImageFont, UnidentifiedImageError
@@ -14,13 +15,13 @@ class TemplateFontReadError(Exception):
     pass
 
 
-SUPPORTED_FONTS = {
+SUPPORTED_FONTS: Final[dict[str, str]] = {
     "dejavu_sans": "DejaVuSans.ttf",
     "dejavu_serif": "NotoSerif-Regular.ttf",
     "dejavu_mono": "NotoSansMono-Regular.ttf",
 }
 
-FONTS_DIR = Path(__file__).resolve().parents[1] / "assets" / "fonts"
+FONTS_DIR: Final[Path] = Path(__file__).resolve().parents[1] / "assets" / "fonts"
 
 
 def render_generated_image(
@@ -73,7 +74,7 @@ def _render_image(
     text_bottom: str,
     font_name: str,
     font_size: int,
-):
+) -> Image.Image:
     try:
         image = Image.open(template_path).convert("RGB")
     except UnidentifiedImageError as exc:
@@ -88,7 +89,7 @@ def _render_image(
     return image
 
 
-def _load_font(font_name: str, font_size: int):
+def _load_font(font_name: str, font_size: int) -> ImageFont.FreeTypeFont:
     font_key = (font_name or "").strip().lower()
     font_file_name = SUPPORTED_FONTS.get(font_key)
     if not font_file_name:
@@ -105,7 +106,13 @@ def _load_font(font_name: str, font_size: int):
         ) from exc
 
 
-def _draw_text_block(draw, image, text, anchor, font):
+def _draw_text_block(
+    draw: ImageDraw.ImageDraw,
+    image: Image.Image,
+    text: str,
+    anchor: Literal["top", "bottom"],
+    font: ImageFont.FreeTypeFont,
+) -> None:
     content = (text or "").strip()
     if not content:
         return

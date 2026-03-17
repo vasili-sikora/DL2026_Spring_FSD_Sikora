@@ -8,3 +8,5 @@ config.py
 .ruff_cache
 .pytest_cache
 /tests
+!/tests/
+!/tests/*.py

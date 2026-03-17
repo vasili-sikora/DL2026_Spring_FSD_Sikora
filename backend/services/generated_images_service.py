@@ -1,4 +1,8 @@
+from pathlib import Path
+from typing import Any
+
 from app.backend.core.config import BASE_DIR, GENERATED_IMAGES_DIR
+from app.backend.models.generated_images import GenerateImageRequest
 from app.backend.repositories.generated_images_repo import (
     GeneratedImagesRepository,
 )
@@ -18,29 +22,32 @@ from app.backend.utils.image_generation import (
 )
 from app.backend.utils.path_resolution import resolve_storage_path
 
+RowMapping = dict[str, Any]
+
 
 class GeneratedImagesService:
     def __init__(
         self,
         generated_images_repo: GeneratedImagesRepository,
         templates_repo: TemplateRepository,
-    ):
+    ) -> None:
         self.generated_images_repo = generated_images_repo
         self.templates_repo = templates_repo
 
-    def get_all_images(self):
+    def get_all_images(self) -> list[RowMapping]:
         images = self.generated_images_repo.get_all_images()
-        if not images:
-            raise ImageNotFoundError("Images not found")
-        return images
 
-    def get_image_by_id(self, image_id: int):
+        return [dict(image) for image in images]
+
+    def get_image_by_id(self, image_id: int) -> RowMapping:
         image = self.generated_images_repo.get_image_by_id(image_id)
         if not image:
             raise ImageNotFoundError("Image not found")
-        return image
+        return dict(image)
 
-    def generate_image(self, template_id: int, payload):
+    def generate_image(
+        self, template_id: int, payload: GenerateImageRequest
+    ) -> RowMapping:
         template_path = self._get_template_image_path(template_id)
 
         try:
@@ -68,9 +75,13 @@ class GeneratedImagesService:
                 "share_token": share_token,
             }
         )
-        return record
+        if not record:
+            raise ValueError("Failed to create generated image")
+        return dict(record)
 
-    def preview_image(self, template_id: int, payload) -> bytes:
+    def preview_image(self, template_id: int, payload: GenerateImageRequest) -> bytes:
+        if payload.font_size < 12 or payload.font_size > 120:
+            raise ValueError("Invalid font size")
         template_path = self._get_template_image_path(template_id)
 
         try:
@@ -88,7 +99,7 @@ class GeneratedImagesService:
         except TemplateFontReadError as exc:
             raise TemplateFontError(str(exc)) from exc
 
-    def _get_template_image_path(self, template_id: int):
+    def _get_template_image_path(self, template_id: int) -> Path:
         template = self.templates_repo.get_template_by_id(template_id)
         if not template:
             raise TemplateNotFoundError("Template not found")
@@ -98,10 +109,10 @@ class GeneratedImagesService:
             raise TemplateImageFileNotFoundError("Template image file not found")
         return template_path
 
-    def get_image_by_share_token(self, share_token: str):
+    def get_image_by_share_token(self, share_token: str) -> RowMapping:
         image = self.generated_images_repo.get_image_by_share_token(share_token)
 
         if not image:
             raise ImageNotFoundError("Image not found")
 
-        return image
+        return dict(image)

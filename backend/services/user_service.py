@@ -1,3 +1,5 @@
+from typing import Any
+
 from app.backend.models.user import UserCreate, UserLogin
 from app.backend.repositories.user_repo import UserRepo
 from app.backend.utils.password import PasswordHasher, PasswordValidator
@@ -5,7 +7,7 @@ from app.backend.utils.validate_email import EmailValidator
 
 
 class UserService:
-    def __init__(self, repo: UserRepo):
+    def __init__(self, repo: UserRepo) -> None:
         self._repo = repo
 
     # def get_password_by_email(self, email: str) -> str:
@@ -14,7 +16,7 @@ class UserService:
     #     password = self._repo.get_password_by_email(email)
     #     return password
 
-    def register_user(self, payload: UserCreate) -> dict:
+    def register_user(self, payload: UserCreate) -> dict[str, Any]:
         if not PasswordValidator.is_valid_password(payload.password):
             raise ValueError("Invalid password")
         if not EmailValidator.is_valid_email(payload.email):
@@ -22,7 +24,7 @@ class UserService:
         password = PasswordHasher.hash(payload.password)
         return self._repo.save_user(payload.email, password)
 
-    def login_user(self, payload: UserLogin) -> dict:
+    def login_user(self, payload: UserLogin) -> dict[str, Any]:
         if not PasswordValidator.is_valid_password(payload.password):
             raise ValueError("Invalid password")
         if not EmailValidator.is_valid_email(payload.email):

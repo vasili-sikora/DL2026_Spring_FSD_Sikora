@@ -1,20 +1,32 @@
+from typing import Any, Mapping
+
 from app.backend.repositories.templates_repo import TemplateRepository
+
+TemplatePayload = Mapping[str, str]
+TemplateRow = dict[str, Any]
 
 
 class TemplateService:
-    def __init__(self, repo: TemplateRepository):
+    def __init__(self, repo: TemplateRepository) -> None:
         self.repo = repo
 
-    def create_template(self, template):
+    def create_template(self, template: TemplatePayload) -> TemplateRow:
         if not template["name"]:
             raise ValueError("Template name required")
         if not template["image_name"].endswith((".jpeg", ".png", "jpg")):
             raise ValueError("Incorrect file format")
 
-        return self.repo.create_template(template)
+        created = self.repo.create_template(template)
+        if not created:
+            raise ValueError("Failed to create template")
+        return dict(created)
 
-    def get_all_templates(self):
-        return self.repo.get_all_templates()
+    def get_all_templates(self) -> list[TemplateRow]:
+        rows = self.repo.get_all_templates()
+        return [dict(row) for row in rows]
 
-    def get_template_by_id(self, template_id: int):
-        return self.repo.get_template_by_id(template_id)
+    def get_template_by_id(self, template_id: int) -> TemplateRow | None:
+        row = self.repo.get_template_by_id(template_id)
+        if not row:
+            return None
+        return dict(row)

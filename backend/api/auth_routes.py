@@ -1,3 +1,5 @@
+from typing import Any
+
 from fastapi import APIRouter, HTTPException
 
 from app.backend.db.sqlite_conn import SQLiteConnection
@@ -5,15 +7,15 @@ from app.backend.models.user import UserCreate, UserLogin
 from app.backend.repositories.user_repo import UserRepo
 from app.backend.services.user_service import UserService
 
-db = SQLiteConnection()
-repo = UserRepo(db)
-service = UserService(repo)
+db: SQLiteConnection = SQLiteConnection()
+repo: UserRepo = UserRepo(db)
+service: UserService = UserService(repo)
 
-auth_router = APIRouter()
+auth_router: APIRouter = APIRouter()
 
 
 @auth_router.post("/auth/register")
-def register_user(payload: UserCreate):
+def register_user(payload: UserCreate) -> dict[str, Any]:
     try:
         return service.register_user(payload)
     except ValueError as exc:
@@ -21,7 +23,7 @@ def register_user(payload: UserCreate):
 
 
 @auth_router.post("/auth/login")
-def login_user(payload: UserLogin):
+def login_user(payload: UserLogin) -> dict[str, Any]:
     try:
         return service.login_user(payload)
     except ValueError as exc:

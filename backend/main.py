@@ -13,7 +13,7 @@ from app.backend.api.templates_routes import templates_router
 from app.backend.core.config import FRONTEND_DIR
 from app.backend.core.rate_limit import limiter
 
-app = FastAPI()
+app: FastAPI = FastAPI()
 
 app.include_router(templates_router)
 app.include_router(generated_images_router)
@@ -28,7 +28,7 @@ app.add_middleware(SlowAPIMiddleware)
 
 
 @app.get("/")
-def root():
+def root() -> FileResponse:
     return FileResponse(FRONTEND_DIR / "index.html")
 
 

@@ -1,8 +1,12 @@
 from app.backend.db.sqlite_conn import SQLiteConnection
 
-conn = SQLiteConnection().get_conn()
 
-with open("app/backend/scripts/init_db/init_db.sql") as f:
-    conn.executescript(f.read())
+def main() -> None:
+    conn = SQLiteConnection().get_conn()
+    with open("app/backend/scripts/init_db/init_db.sql", encoding="utf-8") as f:
+        conn.executescript(f.read())
+    conn.close()
 
-conn.close()
+
+if __name__ == "__main__":
+    main()

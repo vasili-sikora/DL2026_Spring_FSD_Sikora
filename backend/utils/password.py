@@ -2,15 +2,15 @@ from passlib.context import CryptContext
 
 
 class PasswordHasher:
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    pwd_context: CryptContext = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
     @staticmethod
     def hash(password: str) -> str:
         return PasswordHasher.pwd_context.hash(password)
 
     @staticmethod
-    def verify(password: str, hash: str) -> bool:
-        return PasswordHasher.pwd_context.verify(password, hash)
+    def verify(password: str, password_hash: str) -> bool:
+        return PasswordHasher.pwd_context.verify(password, password_hash)
 
 
 class PasswordValidator:

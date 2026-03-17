@@ -11,7 +11,7 @@
             href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
             rel="stylesheet"
         />
-        <link rel="stylesheet" href="/static/styles.css?v=20260317-6" />
+        <link rel="stylesheet" href="/static/styles.css?v=20260317-10" />
     </head>
     <body>
         <div class="bg-grid"></div>
@@ -192,13 +192,36 @@
                     </label>
                     <label>
                         Password
-                        <input
-                            type="password"
-                            id="auth-password"
-                            placeholder="At least 8 characters"
-                            required
-                            minlength="8"
-                        />
+                        <div class="password-field">
+                            <input
+                                type="password"
+                                id="auth-password"
+                                placeholder="At least 8 characters"
+                                required
+                                minlength="8"
+                            />
+                            <button
+                                type="button"
+                                id="auth-toggle-password"
+                                class="password-toggle"
+                                aria-label="Show password"
+                                title="Show password"
+                            >
+                                <span class="password-toggle__eye"></span>
+                                <span class="password-toggle__slash"></span>
+                            </button>
+                        </div>
+                    </label>
+                    <label id="auth-confirm-wrap" class="hidden">
+                        Confirm password
+                        <div class="password-field">
+                            <input
+                                type="password"
+                                id="auth-confirm-password"
+                                placeholder="Repeat password"
+                                minlength="8"
+                            />
+                        </div>
                     </label>
                     <button id="auth-submit" type="submit">Login</button>
                 </form>
@@ -210,6 +233,6 @@
         </div>
 
         <div id="toast" class="toast" aria-live="polite"></div>
-        <script src="/static/app.js?v=20260317-6" defer></script>
+        <script src="/static/app.js?v=20260317-12" defer></script>
     </body>
 </html>
