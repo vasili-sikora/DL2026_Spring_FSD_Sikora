@@ -2,11 +2,8 @@
 __pycache__/
 *.pyc
 .env
-data/
 config.py
 .ruff_cache/
 .ruff_cache
 .pytest_cache
-/tests
-!/tests/
-!/tests/*.py
+.mypy_cache
