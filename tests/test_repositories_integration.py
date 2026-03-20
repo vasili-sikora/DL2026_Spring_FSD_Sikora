@@ -7,6 +7,7 @@ from app.backend.db.sqlite_conn import SQLiteConnection
 from app.backend.repositories.generated_images_repo import GeneratedImagesRepository
 from app.backend.repositories.templates_repo import TemplateRepository
 from app.backend.repositories.user_repo import UserRepo
+from app.backend.services.exceptions import UserAlreadyExistsError
 
 SCHEMA_SQL = """
 CREATE TABLE templates (
@@ -162,5 +163,5 @@ def test_user_repo_save_login_and_duplicate(sqlite_db: SQLiteConnection) -> None
     assert repo.login_user("missing@example.com") is None
     assert repo.get_password_by_email("missing@example.com") is None
 
-    with pytest.raises(ValueError, match="User already exists"):
+    with pytest.raises(UserAlreadyExistsError, match="User already exists"):
         repo.save_user("user@example.com", "hash-2")

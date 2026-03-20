@@ -11,7 +11,10 @@ from app.backend.repositories.generated_images_repo import (
 )
 from app.backend.repositories.templates_repo import TemplateRepository
 from app.backend.services.exceptions import (
+    ImageGenerationValidationError,
     ImageNotFoundError,
+    ImagePersistenceError,
+    InvalidUserContextError,
     TemplateFontError,
     TemplateImageFileNotFoundError,
     TemplateImageFormatError,
@@ -39,7 +42,7 @@ class GeneratedImagesService:
 
     def get_all_images(self, user_id: int) -> list[RowMapping]:
         if user_id < 1:
-            raise ValueError("Invalid user id")
+            raise InvalidUserContextError("Invalid user id")
         images = self.generated_images_repo.get_all_images(user_id)
 
         return [dict(image) for image in images]
@@ -82,12 +85,12 @@ class GeneratedImagesService:
             }
         )
         if not record:
-            raise ValueError("Failed to create generated image")
+            raise ImagePersistenceError("Failed to create generated image")
         return dict(record)
 
     def preview_image(self, template_id: int, payload: PreviewImageRequest) -> bytes:
         if payload.font_size < 12 or payload.font_size > 120:
-            raise ValueError("Invalid font size")
+            raise ImageGenerationValidationError("Invalid font size")
         template_path = self._get_template_image_path(template_id)
 
         try:

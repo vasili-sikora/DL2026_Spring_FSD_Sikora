@@ -9,7 +9,9 @@ from app.backend.models.generated_images import (
     PreviewImageRequest,
 )
 from app.backend.services.exceptions import (
+    ImageGenerationValidationError,
     ImageNotFoundError,
+    InvalidUserContextError,
     TemplateFontError,
     TemplateImageFileNotFoundError,
     TemplateImageFormatError,
@@ -193,7 +195,7 @@ def test_preview_image_rejects_invalid_font_size_even_if_payload_is_untrusted() 
         font_size=999,
     )
 
-    with pytest.raises(ValueError, match="Invalid font size"):
+    with pytest.raises(ImageGenerationValidationError, match="Invalid font size"):
         service.preview_image(1, untrusted_payload)
 
 
@@ -239,5 +241,5 @@ def test_get_all_images_rejects_invalid_user_id() -> None:
         FakeGeneratedImagesRepository(), FakeTemplateRepository(None)
     )
 
-    with pytest.raises(ValueError, match="Invalid user id"):
+    with pytest.raises(InvalidUserContextError, match="Invalid user id"):
         service.get_all_images(0)

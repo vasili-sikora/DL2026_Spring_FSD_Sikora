@@ -31,6 +31,9 @@
                 <a id="nav-profile" class="nav-link hidden" href="#profile"
                     >Profile</a
                 >
+                <a id="nav-admin" class="nav-link hidden" href="#admin"
+                    >Admin</a
+                >
             </nav>
             <div class="auth-panel">
                 <span id="top-user-label" class="user-label">Guest</span>
@@ -169,6 +172,63 @@
                     </section>
                 </div>
             </section>
+
+            <section id="page-admin" class="page">
+                <div class="layout">
+                    <section class="card">
+                        <div class="section-header">
+                            <div>
+                                <p class="eyebrow">Restricted</p>
+                                <h2>Admin Panel</h2>
+                            </div>
+                            <span class="admin-badge">Template Manager</span>
+                        </div>
+                        <p id="admin-status" class="hint">
+                            Login as admin to manage template records.
+                        </p>
+                        <form id="admin-template-form" class="form">
+                            <label>
+                                Template name
+                                <input
+                                    type="text"
+                                    id="admin-template-name"
+                                    placeholder="Dramatic Cat"
+                                    required
+                                />
+                            </label>
+                            <label>
+                                Image file name
+                                <input
+                                    type="text"
+                                    id="admin-template-image-name"
+                                    placeholder="dramatic-cat.jpg"
+                                    required
+                                />
+                            </label>
+                            <button id="admin-submit" type="submit">
+                                Create template
+                            </button>
+                        </form>
+                        <p class="hint">
+                            Backend currently accepts only a file name that
+                            already exists in <code>data/templates</code>.
+                        </p>
+                    </section>
+
+                    <section class="card">
+                        <div class="section-header">
+                            <div>
+                                <p class="eyebrow">Overview</p>
+                                <h2>Registered Templates</h2>
+                            </div>
+                        </div>
+                        <div
+                            id="admin-template-list"
+                            class="admin-template-list"
+                        ></div>
+                    </section>
+                </div>
+            </section>
         </main>
 
         <div id="auth-modal" class="modal hidden" aria-hidden="true">
@@ -233,6 +293,6 @@
         </div>
 
         <div id="toast" class="toast" aria-live="polite"></div>
-        <script type="module" src="/static/app.js?v=20260320-01"></script>
+        <script type="module" src="/static/app.js?v=20260321-01"></script>
     </body>
 </html>

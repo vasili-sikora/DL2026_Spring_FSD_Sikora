@@ -90,3 +90,6 @@ SESSION_MAX_AGE_SECONDS: Final[int] = _get_int_env(
 
 SQLALCHEMY_DATABASE_URL: Final[str] = f"sqlite:///{DB_PATH}"
 CORS_ALLOWED_ORIGINS: Final[list[str]] = _get_list_env("CORS_ALLOWED_ORIGINS")
+SQLITE_BUSY_TIMEOUT_MS: Final[int] = _get_int_env("SQLITE_BUSY_TIMEOUT_MS", 5000)
+SQLITE_ENABLE_WAL: Final[bool] = _get_bool_env("SQLITE_ENABLE_WAL", True)
+SQLITE_SYNCHRONOUS: Final[str] = os.getenv("SQLITE_SYNCHRONOUS", "NORMAL").upper()

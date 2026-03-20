@@ -1,5 +1,6 @@
 import pytest
 
+from app.backend.services.exceptions import TemplateValidationError
 from app.backend.services.templates_service import TemplateService
 
 
@@ -35,7 +36,7 @@ class FakeTemplateRepository:
 def test_create_template_rejects_empty_name() -> None:
     service = TemplateService(FakeTemplateRepository())
 
-    with pytest.raises(ValueError, match="Template name required"):
+    with pytest.raises(TemplateValidationError, match="Template name required"):
         service.create_template({"name": "", "image_name": "meme.png"})
 
 
@@ -52,7 +53,7 @@ def test_create_template_rejects_empty_name() -> None:
 def test_create_template_rejects_non_image_formats(image_name: str) -> None:
     service = TemplateService(FakeTemplateRepository())
 
-    with pytest.raises(ValueError, match="Incorrect file format"):
+    with pytest.raises(TemplateValidationError, match="Incorrect file format"):
         service.create_template({"name": "Bad", "image_name": image_name})
 
 
@@ -90,5 +91,5 @@ def test_get_template_by_id_passes_repository_result() -> None:
 def test_create_template_should_reject_path_traversal() -> None:
     service = TemplateService(FakeTemplateRepository())
 
-    with pytest.raises(ValueError, match="must not contain directories"):
+    with pytest.raises(TemplateValidationError, match="must not contain directories"):
         service.create_template({"name": "Traversal", "image_name": "../../secret.png"})

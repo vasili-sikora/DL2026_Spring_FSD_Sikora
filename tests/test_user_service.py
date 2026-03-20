@@ -1,6 +1,11 @@
 import pytest
 
 from app.backend.models.user import UserCreate, UserLogin
+from app.backend.services.exceptions import (
+    InvalidCredentialsError,
+    InvalidEmailError,
+    InvalidPasswordError,
+)
 from app.backend.services.user_service import UserService
 from app.backend.utils.password import PasswordHasher
 
@@ -24,11 +29,17 @@ class FakeUserRepo:
     def login_user(self, email: str) -> dict[str, object] | None:
         return self.users_by_email.get(email)
 
+    def get_user_by_id(self, user_id: int) -> dict[str, object] | None:
+        for user in self.users_by_email.values():
+            if user["id"] == user_id:
+                return user
+        return None
+
 
 def test_register_rejects_invalid_email() -> None:
     service = UserService(FakeUserRepo())
 
-    with pytest.raises(ValueError, match="Invalid email"):
+    with pytest.raises(InvalidEmailError, match="Invalid email"):
         service.register_user(UserCreate(email="not-an-email", password="abcd1234"))
 
 
@@ -36,7 +47,7 @@ def test_register_rejects_invalid_email() -> None:
 def test_register_rejects_too_short_password(password: str) -> None:
     service = UserService(FakeUserRepo())
 
-    with pytest.raises(ValueError, match="Invalid password"):
+    with pytest.raises(InvalidPasswordError, match="Invalid password"):
         service.register_user(UserCreate(email="user@example.com", password=password))
 
 
@@ -99,19 +110,19 @@ def test_login_rejects_invalid_password() -> None:
     }
     service = UserService(repo)
 
-    with pytest.raises(ValueError, match="Invalid password"):
+    with pytest.raises(InvalidCredentialsError, match="Invalid email or password"):
         service.login_user(UserLogin(email="user@example.com", password="abcd1235"))
 
 
 def test_login_rejects_invalid_email_format() -> None:
     service = UserService(FakeUserRepo())
 
-    with pytest.raises(ValueError, match="Invalid email"):
+    with pytest.raises(InvalidEmailError, match="Invalid email"):
         service.login_user(UserLogin(email="invalid-email", password="abcd1234"))
 
 
 def test_login_rejects_unknown_email() -> None:
     service = UserService(FakeUserRepo())
 
-    with pytest.raises(ValueError, match="Invalid password"):
+    with pytest.raises(InvalidCredentialsError, match="Invalid email or password"):
         service.login_user(UserLogin(email="ghost@example.com", password="abcd1234"))

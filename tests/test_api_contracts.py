@@ -30,11 +30,15 @@ from app.backend.models.generated_images import (
 from app.backend.models.templates import TemplateCreate
 from app.backend.models.user import UserCreate, UserLogin
 from app.backend.services.exceptions import (
+    AuthenticationError,
+    ImageGenerationValidationError,
     ImageNotFoundError,
     TemplateFontError,
     TemplateImageFileNotFoundError,
     TemplateImageFormatError,
     TemplateNotFoundError,
+    TemplateValidationError,
+    UserNotFoundError,
 )
 
 
@@ -74,7 +78,7 @@ def test_auth_register_maps_service_error_to_http_400(
     class _ServiceFail:
         @staticmethod
         def register_user(payload: Any) -> dict[str, Any]:
-            raise ValueError("Invalid payload")
+            raise AuthenticationError("Invalid payload")
 
     monkeypatch.setattr("app.backend.api.auth_routes.service", _ServiceFail)
 
@@ -122,6 +126,22 @@ def test_auth_me_returns_current_user(monkeypatch: pytest.MonkeyPatch) -> None:
     assert result["email"] == "me@example.com"
 
 
+def test_auth_me_maps_user_not_found_to_http_401(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _ServiceFail:
+        @staticmethod
+        def get_user_by_id(_user_id: int) -> dict[str, Any]:
+            raise UserNotFoundError("User not found")
+
+    monkeypatch.setattr("app.backend.api.auth_routes.service", _ServiceFail)
+
+    with pytest.raises(HTTPException) as exc_info:
+        get_me(5)
+
+    assert exc_info.value.status_code == 401
+
+
 def test_auth_logout_returns_ok_message() -> None:
     response = Response()
 
@@ -164,14 +184,17 @@ def test_templates_create_maps_service_error(monkeypatch: pytest.MonkeyPatch) ->
     class _TemplateServiceFail:
         @staticmethod
         def create_template(payload: dict[str, Any]) -> dict[str, Any]:
-            raise ValueError("Incorrect file format")
+            raise TemplateValidationError("Incorrect file format")
 
     monkeypatch.setattr(
         "app.backend.api.templates_routes.template_service", _TemplateServiceFail
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        create_template(TemplateCreate(name="Bad", image_name="archive.zip"))
+        create_template(
+            TemplateCreate(name="Bad", image_name="archive.zip"),
+            {"id": 1, "is_admin": 1},
+        )
 
     assert exc_info.value.status_code == 400
     assert exc_info.value.detail == "Incorrect file format"
@@ -281,7 +304,7 @@ def test_generate_maps_domain_errors(
         (TemplateImageFileNotFoundError("Template image file not found"), 404),
         (TemplateImageFormatError("Template image format is not supported"), 400),
         (TemplateFontError("Unsupported font"), 400),
-        (ValueError("Invalid font size"), 400),
+        (ImageGenerationValidationError("Invalid font size"), 400),
     ],
 )
 def test_preview_maps_errors(

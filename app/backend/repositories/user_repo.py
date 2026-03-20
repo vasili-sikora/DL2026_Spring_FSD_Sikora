@@ -2,6 +2,7 @@ from sqlite3 import IntegrityError
 from typing import Any
 
 from app.backend.db.sqlite_conn import SQLiteConnection
+from app.backend.services.exceptions import UserAlreadyExistsError
 
 
 class UserRepo:
@@ -30,10 +31,10 @@ class UserRepo:
                 )
                 row = cursor.fetchone()
                 if not row:
-                    raise ValueError("Failed to load created user")
+                    raise UserAlreadyExistsError("Failed to load created user")
                 return dict(row)
         except IntegrityError:
-            raise ValueError("User already exists")
+            raise UserAlreadyExistsError("User already exists")
 
     def login_user(self, email: str) -> dict[str, Any] | None:
         sql = """SELECT id, email, is_admin FROM users WHERE email = ?"""

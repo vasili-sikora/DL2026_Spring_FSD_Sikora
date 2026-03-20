@@ -1,6 +1,7 @@
 from typing import Any, Mapping
 
 from app.backend.repositories.templates_repo import TemplateRepository
+from app.backend.services.exceptions import TemplateValidationError
 from app.backend.storage.template_storage import build_template_image_path
 
 TemplatePayload = Mapping[str, str]
@@ -13,9 +14,12 @@ class TemplateService:
 
     def create_template(self, template: TemplatePayload) -> TemplateRow:
         if not template["name"]:
-            raise ValueError("Template name required")
+            raise TemplateValidationError("Template name required")
 
-        image_path = build_template_image_path(template["image_name"])
+        try:
+            image_path = build_template_image_path(template["image_name"])
+        except ValueError as exc:
+            raise TemplateValidationError(str(exc)) from exc
 
         created = self.repo.create_template(
             {
@@ -24,7 +28,7 @@ class TemplateService:
             }
         )
         if not created:
-            raise ValueError("Failed to create template")
+            raise TemplateValidationError("Failed to create template")
         return dict(created)
 
     def get_all_templates(self) -> list[TemplateRow]:

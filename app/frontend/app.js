@@ -16,9 +16,11 @@ const toast = document.getElementById("toast");
 const navCatalog = document.getElementById("nav-catalog");
 const navGenerate = document.getElementById("nav-generate");
 const navProfile = document.getElementById("nav-profile");
+const navAdmin = document.getElementById("nav-admin");
 const pageCatalog = document.getElementById("page-catalog");
 const pageGenerate = document.getElementById("page-generate");
 const pageProfile = document.getElementById("page-profile");
+const pageAdmin = document.getElementById("page-admin");
 
 const topUserLabel = document.getElementById("top-user-label");
 const navLogin = document.getElementById("nav-login");
@@ -38,6 +40,14 @@ const authConfirmPassword = document.getElementById("auth-confirm-password");
 const authTogglePassword = document.getElementById("auth-toggle-password");
 const authSubmit = document.getElementById("auth-submit");
 const authStatus = document.getElementById("auth-status");
+const adminStatus = document.getElementById("admin-status");
+const adminTemplateForm = document.getElementById("admin-template-form");
+const adminTemplateName = document.getElementById("admin-template-name");
+const adminTemplateImageName = document.getElementById(
+  "admin-template-image-name",
+);
+const adminSubmit = document.getElementById("admin-submit");
+const adminTemplateList = document.getElementById("admin-template-list");
 
 let templatesById = new Map();
 let previewObjectUrl = null;
@@ -115,6 +125,10 @@ function closeAuthModal() {
   authModal.setAttribute("aria-hidden", "true");
 }
 
+function isAdminUser() {
+  return Boolean(currentUser?.is_admin);
+}
+
 function renderAuthState() {
   if (!currentUser) {
     topUserLabel.textContent = "Guest";
@@ -122,7 +136,11 @@ function renderAuthState() {
     navRegister.classList.remove("hidden");
     navLogout.classList.add("hidden");
     navProfile.classList.add("hidden");
-    if (window.location.hash === "#profile") {
+    navAdmin.classList.add("hidden");
+    if (
+      window.location.hash === "#profile" ||
+      window.location.hash === "#admin"
+    ) {
       window.location.hash = "#catalog";
     }
     return;
@@ -133,11 +151,19 @@ function renderAuthState() {
   navRegister.classList.add("hidden");
   navLogout.classList.remove("hidden");
   navProfile.classList.remove("hidden");
+  navAdmin.classList.toggle("hidden", !isAdminUser());
+
+  if (window.location.hash === "#admin" && !isAdminUser()) {
+    window.location.hash = "#catalog";
+  }
 }
 
 function getActivePage() {
   if (window.location.hash === "#profile") {
     return "profile";
+  }
+  if (window.location.hash === "#admin") {
+    return "admin";
   }
   if (window.location.hash === "#generate") {
     return "generate";
@@ -147,15 +173,28 @@ function getActivePage() {
 
 function renderPage() {
   const active = getActivePage();
+  if (active === "admin" && !currentUser) {
+    window.location.hash = "#catalog";
+    return;
+  }
+  if (active === "admin" && !isAdminUser()) {
+    showToast("Admin access required", true);
+    window.location.hash = "#catalog";
+    return;
+  }
+
   const isCatalog = active === "catalog";
   const isGenerate = active === "generate";
   const isProfile = active === "profile";
+  const isAdmin = active === "admin";
   pageCatalog.classList.toggle("active", isCatalog);
   pageGenerate.classList.toggle("active", isGenerate);
   pageProfile.classList.toggle("active", isProfile);
+  pageAdmin.classList.toggle("active", isAdmin);
   navCatalog.classList.toggle("active", isCatalog);
   navGenerate.classList.toggle("active", isGenerate);
   navProfile.classList.toggle("active", isProfile);
+  navAdmin.classList.toggle("active", isAdmin);
 
   if (isProfile && !currentUser) {
     profileStatus.textContent =
@@ -163,6 +202,20 @@ function renderPage() {
   } else if (isProfile && currentUser) {
     profileStatus.textContent = `Signed in as ${currentUser.email}.`;
   }
+
+  if (isAdmin && !currentUser) {
+    adminStatus.textContent = "Login is required to open admin tools.";
+  } else if (isAdmin && !isAdminUser()) {
+    adminStatus.textContent = "Admin access required.";
+  } else if (isAdmin) {
+    adminStatus.textContent =
+      "Create template records for images already placed in data/templates.";
+  }
+
+  const adminEnabled = isAdminUser();
+  adminTemplateName.disabled = !adminEnabled;
+  adminTemplateImageName.disabled = !adminEnabled;
+  adminSubmit.disabled = !adminEnabled;
 }
 
 async function loadPreviewImage(templateId, payload) {
@@ -333,6 +386,38 @@ function renderCatalogTemplates(templates) {
   }
 }
 
+function renderAdminTemplates(templates) {
+  adminTemplateList.innerHTML = "";
+  if (!templates.length) {
+    const empty = document.createElement("p");
+    empty.className = "template-empty";
+    empty.textContent = "No template records yet.";
+    adminTemplateList.append(empty);
+    return;
+  }
+
+  for (const template of templates) {
+    const card = document.createElement("article");
+    card.className = "admin-template-card";
+
+    const image = document.createElement("img");
+    image.src = `/templates/${template.id}/image`;
+    image.alt = template.name;
+    image.loading = "lazy";
+
+    const meta = document.createElement("div");
+    meta.className = "admin-template-meta";
+    meta.innerHTML = `
+      <p class="admin-template-title">${template.name}</p>
+      <span>ID: ${template.id}</span>
+      <code>${template.image_path}</code>
+    `;
+
+    card.append(image, meta);
+    adminTemplateList.append(card);
+  }
+}
+
 async function copyShareLink(shareToken) {
   const shareUrl = `${window.location.origin}/images/${shareToken}`;
   try {
@@ -394,6 +479,7 @@ async function loadTemplates() {
   const templates = await api("/templates");
   renderCatalogTemplates(templates);
   renderTemplateOptions(templates);
+  renderAdminTemplates(templates);
   if (!templates.length) {
     generateStatus.textContent =
       "Templates are managed in admin panel. Ask admin to add one.";
@@ -515,6 +601,50 @@ authForm.addEventListener("submit", async (event) => {
   } finally {
     authSubmit.disabled = false;
     authSubmit.textContent = authMode === "login" ? "Login" : "Register";
+  }
+});
+
+adminTemplateForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  if (!currentUser) {
+    showToast("Login first to access admin tools", true);
+    openAuthModal("login");
+    return;
+  }
+
+  if (!isAdminUser()) {
+    showToast("Admin access required", true);
+    window.location.hash = "#catalog";
+    return;
+  }
+
+  const payload = {
+    name: adminTemplateName.value.trim(),
+    image_name: adminTemplateImageName.value.trim(),
+  };
+
+  adminSubmit.disabled = true;
+  adminSubmit.textContent = "Creating...";
+
+  try {
+    const created = await api("/templates", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    adminStatus.textContent = `Created template #${created.id}: ${created.name}`;
+    adminTemplateForm.reset();
+    await loadTemplates();
+    if (!templateSelect.value) {
+      selectTemplate(created.id);
+    }
+    showToast(`Template "${created.name}" created`);
+  } catch (error) {
+    adminStatus.textContent = `Template creation failed: ${error.message}`;
+    showToast(`Template creation failed: ${error.message}`, true);
+  } finally {
+    adminSubmit.disabled = false;
+    adminSubmit.textContent = "Create template";
   }
 });
 

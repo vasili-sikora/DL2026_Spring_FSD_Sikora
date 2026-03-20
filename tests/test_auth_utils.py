@@ -1,7 +1,7 @@
 import pytest
 from fastapi import HTTPException
 
-from app.backend.auth.dependencies import get_current_user_id
+from app.backend.auth.dependencies import get_current_user_id, require_admin
 from app.backend.auth.session import create_session_token
 
 
@@ -25,3 +25,10 @@ def test_get_current_user_id_rejects_invalid_tokens(
         get_current_user_id(authorization)
 
     assert exc_info.value.status_code == 401
+
+
+def test_require_admin_rejects_non_admin_user() -> None:
+    with pytest.raises(HTTPException) as exc_info:
+        require_admin({"id": 1, "is_admin": 0})
+
+    assert exc_info.value.status_code == 403

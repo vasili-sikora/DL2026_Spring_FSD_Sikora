@@ -1,10 +1,12 @@
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from starlette.responses import FileResponse
 
+from app.backend.auth.dependencies import require_admin
 from app.backend.dependencies import template_service
 from app.backend.models.templates import TemplateCreate
+from app.backend.services.exceptions import TemplateValidationError
 from app.backend.storage.paths import resolve_storage_path
 
 templates_router: APIRouter = APIRouter()
@@ -40,9 +42,12 @@ def get_template_image(template_id: int) -> FileResponse:
 
 
 @templates_router.post("/templates")
-def create_template(payload: TemplateCreate) -> dict[str, Any]:
+def create_template(
+    payload: TemplateCreate,
+    _admin_user: dict[str, Any] = Depends(require_admin),
+) -> dict[str, Any]:
     try:
         template = template_service.create_template(payload.model_dump())
-    except ValueError as exc:
+    except TemplateValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return dict(template)

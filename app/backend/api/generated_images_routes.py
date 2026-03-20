@@ -14,7 +14,9 @@ from app.backend.models.generated_images import (
     PreviewImageRequest,
 )
 from app.backend.services.exceptions import (
+    ImageGenerationValidationError,
     ImageNotFoundError,
+    ImagePersistenceError,
     TemplateFontError,
     TemplateImageFileNotFoundError,
     TemplateImageFormatError,
@@ -86,6 +88,8 @@ def generate_image(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except TemplateFontError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except ImagePersistenceError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
     return GeneratedImageResponse(**dict(image))
 
 
@@ -117,7 +121,7 @@ def preview_image(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except TemplateFontError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except ValueError as exc:
+    except ImageGenerationValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return Response(content=image_bytes, media_type="image/jpeg")
 
