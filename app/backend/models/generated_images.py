@@ -23,3 +23,10 @@ class GeneratedImageResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     detail: str
+
+class PreviewImageRequest(BaseModel):
+    user_id: int
+    text_top: str = ""
+    text_bottom: str = ""
+    font_name: str = "dejavu_sans"
+    font_size: int = Field(default=40, ge=12, le=120)

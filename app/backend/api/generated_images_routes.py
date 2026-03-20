@@ -1,3 +1,4 @@
+from app.backend.models.generated_images import PreviewImageRequest
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request, Response
@@ -35,9 +36,9 @@ generated_images_service: GeneratedImagesService = GeneratedImagesService(
 
 
 @generated_images_router.get("/generated_images")
-def get_images() -> list[dict[str, Any]]:
+def get_images(user_id) -> list[dict[str, Any]]:
     try:
-        images = generated_images_service.get_all_images()
+        images = generated_images_service.get_all_images(user_id)
     except ImageNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -106,7 +107,7 @@ def generate_image(
 )
 @limiter.limit("50/minute")
 def preview_image(
-    request: Request, template_id: int, payload: GenerateImageRequest
+    request: Request, template_id: int, payload: PreviewImageRequest
 ) -> Response:
     try:
         image_bytes = generated_images_service.preview_image(template_id, payload)

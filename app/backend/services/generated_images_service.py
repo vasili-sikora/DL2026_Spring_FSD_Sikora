@@ -75,6 +75,7 @@ class GeneratedImagesService:
                 "text_bottom": payload.text_bottom,
                 "image_path": str(output_path.relative_to(BASE_DIR)),
                 "share_token": share_token,
+                "user_id": payload.user_id
             }
         )
         if not record:

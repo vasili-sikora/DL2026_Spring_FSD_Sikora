@@ -12,7 +12,7 @@ class GeneratedImagesRepository:
 
     def create_image(self, image: GeneratedImageCreatePayload) -> sqlite3.Row | None:
         sql = """
-        INSERT INTO generated_images (template_id, text_top, text_bottom, image_path, share_token)
+        INSERT INTO generated_images (template_id, text_top, text_bottom, image_path, share_token, user_id)
         VALUES (?, ?, ?, ?, ?)
         """
         with self.db_conn.get_conn() as conn:
@@ -25,6 +25,7 @@ class GeneratedImagesRepository:
                     image["text_bottom"],
                     image["image_path"],
                     image["share_token"],
+                    image["user_id"]
                 ),
             )
             cursor.execute(
