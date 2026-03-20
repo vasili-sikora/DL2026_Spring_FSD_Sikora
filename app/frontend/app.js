@@ -48,14 +48,50 @@ const adminTemplateImageName = document.getElementById(
 );
 const adminSubmit = document.getElementById("admin-submit");
 const adminTemplateList = document.getElementById("admin-template-list");
+const adminFileStatus = document.getElementById("admin-file-status");
+const adminFilePreviewImage = document.getElementById(
+  "admin-file-preview-image",
+);
+const adminFilePreviewMeta = document.getElementById("admin-file-preview-meta");
+const fontColorInput = document.getElementById("font-color");
+const fontColorValue = document.getElementById("font-color-value");
+const colorPresetButtons = Array.from(
+  document.querySelectorAll(".color-preset"),
+);
+const adminLayoutTemplateSelect = document.getElementById(
+  "admin-layout-template-select",
+);
+const layoutTopX = document.getElementById("layout-top-x");
+const layoutTopY = document.getElementById("layout-top-y");
+const layoutTopWidth = document.getElementById("layout-top-width");
+const layoutBottomX = document.getElementById("layout-bottom-x");
+const layoutBottomY = document.getElementById("layout-bottom-y");
+const layoutBottomWidth = document.getElementById("layout-bottom-width");
+const layoutSampleTop = document.getElementById("layout-sample-top");
+const layoutSampleBottom = document.getElementById("layout-sample-bottom");
+const adminLayoutPreviewButton = document.getElementById(
+  "admin-layout-preview-button",
+);
+const adminLayoutSaveButton = document.getElementById(
+  "admin-layout-save-button",
+);
+const adminLayoutStatus = document.getElementById("admin-layout-status");
+const adminLayoutPreviewImage = document.getElementById(
+  "admin-layout-preview-image",
+);
 
 let templatesById = new Map();
 let previewObjectUrl = null;
 let previewDebounceTimer = null;
 let previewRequestController = null;
+let adminLayoutPreviewDebounceTimer = null;
+let adminLayoutPreviewController = null;
 let authMode = "login";
 let currentUser = null;
 let isPasswordVisible = false;
+let adminPreviewObjectUrl = null;
+let adminLayoutPreviewObjectUrl = null;
+let selectedAdminTemplateId = null;
 const THEME_STORAGE_KEY = "dc_theme_v3";
 
 function showToast(message, isError = false) {
@@ -216,6 +252,21 @@ function renderPage() {
   adminTemplateName.disabled = !adminEnabled;
   adminTemplateImageName.disabled = !adminEnabled;
   adminSubmit.disabled = !adminEnabled;
+  adminLayoutTemplateSelect.disabled = !adminEnabled;
+  adminLayoutPreviewButton.disabled = !adminEnabled;
+  adminLayoutSaveButton.disabled = !adminEnabled;
+  for (const field of [
+    layoutTopX,
+    layoutTopY,
+    layoutTopWidth,
+    layoutBottomX,
+    layoutBottomY,
+    layoutBottomWidth,
+    layoutSampleTop,
+    layoutSampleBottom,
+  ]) {
+    field.disabled = !adminEnabled;
+  }
 }
 
 async function loadPreviewImage(templateId, payload) {
@@ -237,7 +288,18 @@ function buildGeneratePayload() {
     text_bottom: document.getElementById("bottom-text").value.trim(),
     font_name: document.getElementById("font-name").value,
     font_size: Number(document.getElementById("font-size").value),
+    font_color: fontColorInput.value,
   };
+}
+
+function syncFontColorUi() {
+  const currentColor = fontColorInput.value.toUpperCase();
+  fontColorValue.textContent = currentColor;
+
+  for (const button of colorPresetButtons) {
+    const isActive = button.dataset.color?.toUpperCase() === currentColor;
+    button.classList.toggle("is-active", Boolean(isActive));
+  }
 }
 
 function updatePreviewDownloadState(enabled) {
@@ -386,6 +448,76 @@ function renderCatalogTemplates(templates) {
   }
 }
 
+function buildTemplateLayoutPayload() {
+  return {
+    top_text_x: Number(layoutTopX.value),
+    top_text_y: Number(layoutTopY.value),
+    top_text_width: Number(layoutTopWidth.value),
+    bottom_text_x: Number(layoutBottomX.value),
+    bottom_text_y: Number(layoutBottomY.value),
+    bottom_text_width: Number(layoutBottomWidth.value),
+  };
+}
+
+function populateAdminLayoutForm(template) {
+  selectedAdminTemplateId = template?.id ?? null;
+  adminLayoutTemplateSelect.value = template ? String(template.id) : "";
+  layoutTopX.value = template?.top_text_x ?? "";
+  layoutTopY.value = template?.top_text_y ?? "";
+  layoutTopWidth.value = template?.top_text_width ?? "";
+  layoutBottomX.value = template?.bottom_text_x ?? "";
+  layoutBottomY.value = template?.bottom_text_y ?? "";
+  layoutBottomWidth.value = template?.bottom_text_width ?? "";
+}
+
+function revokeAdminLayoutPreview() {
+  if (adminLayoutPreviewObjectUrl) {
+    URL.revokeObjectURL(adminLayoutPreviewObjectUrl);
+    adminLayoutPreviewObjectUrl = null;
+  }
+}
+
+function cancelAdminLayoutPreviewRequest() {
+  if (adminLayoutPreviewDebounceTimer) {
+    clearTimeout(adminLayoutPreviewDebounceTimer);
+    adminLayoutPreviewDebounceTimer = null;
+  }
+  if (adminLayoutPreviewController) {
+    adminLayoutPreviewController.abort();
+    adminLayoutPreviewController = null;
+  }
+}
+
+function renderAdminLayoutOptions(templates) {
+  const previousTemplateId = selectedAdminTemplateId;
+  adminLayoutTemplateSelect.innerHTML = "";
+
+  if (!templates.length) {
+    const emptyOption = document.createElement("option");
+    emptyOption.value = "";
+    emptyOption.textContent = "No templates available";
+    adminLayoutTemplateSelect.append(emptyOption);
+    populateAdminLayoutForm(null);
+    revokeAdminLayoutPreview();
+    adminLayoutPreviewImage.removeAttribute("src");
+    adminLayoutStatus.textContent =
+      "Create a template first to edit text zones.";
+    return;
+  }
+
+  for (const template of templates) {
+    const option = document.createElement("option");
+    option.value = String(template.id);
+    option.textContent = `${template.name} (#${template.id})`;
+    adminLayoutTemplateSelect.append(option);
+  }
+
+  const currentTemplate =
+    templates.find((template) => template.id === previousTemplateId) ??
+    templates[0];
+  populateAdminLayoutForm(currentTemplate);
+}
+
 function renderAdminTemplates(templates) {
   adminTemplateList.innerHTML = "";
   if (!templates.length) {
@@ -399,6 +531,9 @@ function renderAdminTemplates(templates) {
   for (const template of templates) {
     const card = document.createElement("article");
     card.className = "admin-template-card";
+    if (template.id === selectedAdminTemplateId) {
+      card.classList.add("selected");
+    }
 
     const image = document.createElement("img");
     image.src = `/templates/${template.id}/image`;
@@ -413,9 +548,55 @@ function renderAdminTemplates(templates) {
       <code>${template.image_path}</code>
     `;
 
+    const editButton = document.createElement("button");
+    editButton.type = "button";
+    editButton.className = "secondary compact";
+    editButton.textContent = "Edit layout";
+    editButton.addEventListener("click", () => {
+      selectedAdminTemplateId = template.id;
+      adminLayoutTemplateSelect.value = String(template.id);
+      populateAdminLayoutForm(template);
+      renderAdminTemplates(Array.from(templatesById.values()));
+      adminLayoutStatus.textContent = `Editing layout for ${template.name}.`;
+      scheduleAdminLayoutPreview(0);
+    });
+
+    meta.append(editButton);
     card.append(image, meta);
     adminTemplateList.append(card);
   }
+}
+
+function renderAdminFilePreview() {
+  const selectedFile = adminTemplateImageName.files?.[0];
+  if (!selectedFile) {
+    if (adminPreviewObjectUrl) {
+      URL.revokeObjectURL(adminPreviewObjectUrl);
+      adminPreviewObjectUrl = null;
+    }
+    adminFilePreviewImage.removeAttribute("src");
+    adminFilePreviewMeta.innerHTML =
+      '<p class="template-empty">No file selected.</p>';
+    adminFileStatus.innerHTML = "Choose a JPG or PNG file from your computer.";
+    return;
+  }
+
+  if (adminPreviewObjectUrl) {
+    URL.revokeObjectURL(adminPreviewObjectUrl);
+  }
+  adminPreviewObjectUrl = URL.createObjectURL(selectedFile);
+  adminFilePreviewImage.src = adminPreviewObjectUrl;
+  adminFilePreviewImage.alt = selectedFile.name;
+
+  adminFilePreviewMeta.innerHTML = `
+    <span class="admin-file-badge available">Ready to upload</span>
+    <code>${selectedFile.name}</code>
+    <span>${Math.max(1, Math.round(selectedFile.size / 1024))} KB</span>
+    <span>${selectedFile.type || "Unknown type"}</span>
+  `;
+
+  adminFileStatus.innerHTML =
+    "The file will be uploaded to <code>data/templates</code> and registered automatically.";
 }
 
 async function copyShareLink(shareToken) {
@@ -479,6 +660,7 @@ async function loadTemplates() {
   const templates = await api("/templates");
   renderCatalogTemplates(templates);
   renderTemplateOptions(templates);
+  renderAdminLayoutOptions(templates);
   renderAdminTemplates(templates);
   if (!templates.length) {
     generateStatus.textContent =
@@ -487,6 +669,94 @@ async function loadTemplates() {
     generateStatus.textContent = "";
   }
   return templates;
+}
+
+async function previewAdminLayout() {
+  if (!selectedAdminTemplateId) {
+    adminLayoutStatus.textContent = "Select a template first.";
+    return;
+  }
+
+  const payload = {
+    ...buildTemplateLayoutPayload(),
+    sample_text_top: layoutSampleTop.value.trim() || "TOP TEXT",
+    sample_text_bottom: layoutSampleBottom.value.trim() || "BOTTOM TEXT",
+    font_name: document.getElementById("font-name").value,
+    font_size: Number(document.getElementById("font-size").value),
+    font_color: fontColorInput.value,
+  };
+
+  if (adminLayoutPreviewController) {
+    adminLayoutPreviewController.abort();
+  }
+  adminLayoutPreviewController = new AbortController();
+
+  const res = await fetch(
+    `/admin/templates/${selectedAdminTemplateId}/layout-preview`,
+    {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: adminLayoutPreviewController.signal,
+    },
+  );
+  if (!res.ok) {
+    let errorDetail = `${res.status} ${res.statusText}`;
+    try {
+      const body = await res.json();
+      errorDetail = body?.detail ?? errorDetail;
+    } catch {
+      // keep fallback
+    }
+    throw new Error(errorDetail);
+  }
+
+  const blob = await res.blob();
+  adminLayoutPreviewController = null;
+  revokeAdminLayoutPreview();
+  adminLayoutPreviewObjectUrl = URL.createObjectURL(blob);
+  adminLayoutPreviewImage.src = adminLayoutPreviewObjectUrl;
+  adminLayoutStatus.textContent = "Preview updated.";
+}
+
+function scheduleAdminLayoutPreview(delayMs = 220) {
+  if (!isAdminUser() || !selectedAdminTemplateId) {
+    return;
+  }
+
+  if (adminLayoutPreviewDebounceTimer) {
+    clearTimeout(adminLayoutPreviewDebounceTimer);
+  }
+
+  adminLayoutPreviewDebounceTimer = setTimeout(async () => {
+    try {
+      await previewAdminLayout();
+    } catch (error) {
+      if (error.name === "AbortError") {
+        return;
+      }
+      adminLayoutStatus.textContent = `Preview failed: ${error.message}`;
+    }
+  }, delayMs);
+}
+
+async function saveAdminLayout() {
+  if (!selectedAdminTemplateId) {
+    adminLayoutStatus.textContent = "Select a template first.";
+    return;
+  }
+
+  const updated = await api(
+    `/admin/templates/${selectedAdminTemplateId}/layout`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(buildTemplateLayoutPayload()),
+    },
+  );
+
+  adminLayoutStatus.textContent = `Layout saved for ${updated.name}.`;
+  await loadTemplates();
 }
 
 async function loadGeneratedImages() {
@@ -528,6 +798,8 @@ generateForm.addEventListener("submit", async (event) => {
     generateForm.reset();
     document.getElementById("font-name").value = "dejavu_sans";
     document.getElementById("font-size").value = 40;
+    fontColorInput.value = "#ffffff";
+    syncFontColorUi();
     selectTemplate(templateId);
     await loadGeneratedImages();
   } catch (error) {
@@ -539,10 +811,30 @@ generateForm.addEventListener("submit", async (event) => {
   }
 });
 
-for (const id of ["top-text", "bottom-text", "font-name", "font-size"]) {
+for (const id of [
+  "top-text",
+  "bottom-text",
+  "font-name",
+  "font-size",
+  "font-color",
+]) {
   const field = document.getElementById(id);
   field.addEventListener("input", () => schedulePreview(220));
   field.addEventListener("change", () => schedulePreview(120));
+}
+
+fontColorInput.addEventListener("input", syncFontColorUi);
+
+for (const button of colorPresetButtons) {
+  button.addEventListener("click", () => {
+    const nextColor = button.dataset.color;
+    if (!nextColor) {
+      return;
+    }
+    fontColorInput.value = nextColor;
+    syncFontColorUi();
+    schedulePreview(0);
+  });
 }
 
 window.addEventListener("hashchange", renderPage);
@@ -552,9 +844,13 @@ navRegister.addEventListener("click", () => openAuthModal("register"));
 navLogout.addEventListener("click", async () => {
   await logout();
   currentUser = null;
+  cancelAdminLayoutPreviewRequest();
   renderGeneratedImages([]);
   renderAuthState();
   renderPage();
+  renderAdminFilePreview();
+  revokeAdminLayoutPreview();
+  adminLayoutPreviewImage.removeAttribute("src");
   showToast("Logged out");
 });
 themeToggle.addEventListener("click", toggleTheme);
@@ -621,20 +917,45 @@ adminTemplateForm.addEventListener("submit", async (event) => {
 
   const payload = {
     name: adminTemplateName.value.trim(),
-    image_name: adminTemplateImageName.value.trim(),
+    image: adminTemplateImageName.files?.[0] ?? null,
   };
+
+  if (!payload.image) {
+    adminStatus.textContent = "Template creation failed: image file required";
+    showToast("Choose an image file first", true);
+    return;
+  }
 
   adminSubmit.disabled = true;
   adminSubmit.textContent = "Creating...";
 
   try {
-    const created = await api("/templates", {
+    const formData = new FormData();
+    formData.append("name", payload.name);
+    formData.append("image", payload.image);
+
+    const res = await fetch("/admin/templates/upload", {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: formData,
+      credentials: "same-origin",
     });
+    if (!res.ok) {
+      let errorDetail = `${res.status} ${res.statusText}`;
+      try {
+        const body = await res.json();
+        errorDetail = body?.detail ?? errorDetail;
+      } catch {
+        // keep fallback text
+      }
+      throw new Error(errorDetail);
+    }
+    const created = await res.json();
     adminStatus.textContent = `Created template #${created.id}: ${created.name}`;
     adminTemplateForm.reset();
     await loadTemplates();
+    populateAdminLayoutForm(created);
+    adminLayoutStatus.textContent = `Template ${created.name} created. Adjust text zones below.`;
+    renderAdminFilePreview();
     if (!templateSelect.value) {
       selectTemplate(created.id);
     }
@@ -648,17 +969,75 @@ adminTemplateForm.addEventListener("submit", async (event) => {
   }
 });
 
+adminTemplateImageName.addEventListener("change", renderAdminFilePreview);
+adminLayoutTemplateSelect.addEventListener("change", () => {
+  const template = templatesById.get(Number(adminLayoutTemplateSelect.value));
+  populateAdminLayoutForm(template ?? null);
+  renderAdminTemplates(Array.from(templatesById.values()));
+  adminLayoutStatus.textContent = template
+    ? `Editing layout for ${template.name}.`
+    : "Select a template first.";
+  if (template) {
+    scheduleAdminLayoutPreview(0);
+  }
+});
+
+adminLayoutPreviewButton.addEventListener("click", async () => {
+  try {
+    adminLayoutPreviewButton.disabled = true;
+    adminLayoutPreviewButton.textContent = "Previewing...";
+    await previewAdminLayout();
+  } catch (error) {
+    adminLayoutStatus.textContent = `Preview failed: ${error.message}`;
+    showToast(`Layout preview failed: ${error.message}`, true);
+  } finally {
+    adminLayoutPreviewButton.disabled = false;
+    adminLayoutPreviewButton.textContent = "Preview layout";
+  }
+});
+
+adminLayoutSaveButton.addEventListener("click", async () => {
+  try {
+    adminLayoutSaveButton.disabled = true;
+    adminLayoutSaveButton.textContent = "Saving...";
+    await saveAdminLayout();
+    showToast("Template layout saved");
+  } catch (error) {
+    adminLayoutStatus.textContent = `Save failed: ${error.message}`;
+    showToast(`Layout save failed: ${error.message}`, true);
+  } finally {
+    adminLayoutSaveButton.disabled = false;
+    adminLayoutSaveButton.textContent = "Save layout";
+  }
+});
+
+for (const field of [
+  layoutTopX,
+  layoutTopY,
+  layoutTopWidth,
+  layoutBottomX,
+  layoutBottomY,
+  layoutBottomWidth,
+  layoutSampleTop,
+  layoutSampleBottom,
+]) {
+  field.addEventListener("input", () => scheduleAdminLayoutPreview(220));
+  field.addEventListener("change", () => scheduleAdminLayoutPreview(80));
+}
+
 authTogglePassword.addEventListener("click", togglePasswordVisibility);
 
 async function bootstrap() {
   applyTheme(loadStoredTheme());
   currentUser = await loadCurrentUser();
+  syncFontColorUi();
 
   renderAuthState();
   renderPage();
 
   try {
     await loadTemplates();
+    renderAdminFilePreview();
     await loadGeneratedImages();
   } catch (error) {
     showToast(`Load failed: ${error.message}`, true);

@@ -1,7 +1,6 @@
-from typing import Any
+from typing import Any, Protocol
 
 from app.backend.models.user import UserCreate, UserLogin
-from app.backend.repositories.user_repo import UserRepo
 from app.backend.services.exceptions import (
     InvalidCredentialsError,
     InvalidEmailError,
@@ -13,8 +12,19 @@ from app.backend.utils.password import PasswordHasher, PasswordValidator
 from app.backend.utils.validate_email import EmailValidator
 
 
+class UserRepoLike(Protocol):
+    def get_password_by_email(self, email: str) -> str | None: ...
+    def save_user(self, email: str, password: str) -> dict[str, Any]: ...
+    def login_user(self, email: str) -> dict[str, Any] | None: ...
+    def get_user_by_id(self, user_id: int) -> dict[str, Any] | None: ...
+    def get_user_by_email(self, email: str) -> dict[str, Any] | None: ...
+    def set_admin_status(
+        self, user_id: int, is_admin: bool
+    ) -> dict[str, Any] | None: ...
+
+
 class UserService:
-    def __init__(self, repo: UserRepo) -> None:
+    def __init__(self, repo: UserRepoLike) -> None:
         self._repo = repo
 
     # def get_password_by_email(self, email: str) -> str:
@@ -61,3 +71,25 @@ class UserService:
             raise UserNotFoundError("User not found")
 
         return user
+
+    def promote_user_to_admin(self, email: str) -> dict[str, Any]:
+        if not EmailValidator.is_valid_email(email):
+            raise InvalidEmailError("Invalid email")
+
+        user = self._repo.get_user_by_email(email)
+        if not user:
+            raise UserNotFoundError("User not found")
+
+        updated_user = self._repo.set_admin_status(user["id"], True)
+        if not updated_user:
+            raise UserNotFoundError("User not found")
+
+        return updated_user
+
+    def create_admin_user(self, payload: UserCreate) -> dict[str, Any]:
+        created_user = self.register_user(payload)
+        promoted_user = self._repo.set_admin_status(created_user["id"], True)
+        if not promoted_user:
+            raise UserNotFoundError("User not found")
+
+        return promoted_user

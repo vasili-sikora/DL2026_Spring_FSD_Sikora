@@ -1,9 +1,12 @@
+from pathlib import Path
+
 from app.backend.db.sqlite_conn import SQLiteConnection
 
 
 def main() -> None:
+    sql_path = Path(__file__).with_name("init_db.sql")
     conn = SQLiteConnection().get_conn()
-    with open("app/backend/scripts/init_db/init_db.sql", encoding="utf-8") as f:
+    with sql_path.open(encoding="utf-8") as f:
         conn.executescript(f.read())
     conn.close()
 

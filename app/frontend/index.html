@@ -128,6 +128,59 @@
                                     value="40"
                                 />
                             </label>
+                            <label class="color-field">
+                                <span>Font color</span>
+                                <div class="color-field__panel">
+                                    <label
+                                        class="color-field__picker"
+                                        for="font-color"
+                                    >
+                                        <input
+                                            type="color"
+                                            id="font-color"
+                                            value="#ffffff"
+                                        />
+                                    </label>
+                                    <span
+                                        id="font-color-value"
+                                        class="color-field__value"
+                                        >#FFFFFF</span
+                                    >
+                                    <div
+                                        class="color-presets"
+                                        aria-label="Font color presets"
+                                    >
+                                        <button
+                                            type="button"
+                                            class="color-preset is-active"
+                                            data-color="#ffffff"
+                                            aria-label="Use white"
+                                            title="White"
+                                        ></button>
+                                        <button
+                                            type="button"
+                                            class="color-preset"
+                                            data-color="#111111"
+                                            aria-label="Use near black"
+                                            title="Near black"
+                                        ></button>
+                                        <button
+                                            type="button"
+                                            class="color-preset"
+                                            data-color="#ffd84d"
+                                            aria-label="Use yellow"
+                                            title="Yellow"
+                                        ></button>
+                                        <button
+                                            type="button"
+                                            class="color-preset"
+                                            data-color="#ff5a5f"
+                                            aria-label="Use coral red"
+                                            title="Coral red"
+                                        ></button>
+                                    </div>
+                                </div>
+                            </label>
                             <button type="submit">Generate</button>
                         </form>
                         <p id="generate-status" class="hint"></p>
@@ -174,8 +227,8 @@
             </section>
 
             <section id="page-admin" class="page">
-                <div class="layout">
-                    <section class="card">
+                <div class="layout admin-layout">
+                    <section class="card admin-section admin-section--form">
                         <div class="section-header">
                             <div>
                                 <p class="eyebrow">Restricted</p>
@@ -197,11 +250,11 @@
                                 />
                             </label>
                             <label>
-                                Image file name
+                                Source image
                                 <input
-                                    type="text"
+                                    type="file"
                                     id="admin-template-image-name"
-                                    placeholder="dramatic-cat.jpg"
+                                    accept=".jpg,.jpeg,.png,image/jpeg,image/png"
                                     required
                                 />
                             </label>
@@ -209,14 +262,142 @@
                                 Create template
                             </button>
                         </form>
-                        <p class="hint">
-                            Backend currently accepts only a file name that
-                            already exists in <code>data/templates</code>.
+                        <p id="admin-file-status" class="hint">
+                            Choose a JPG or PNG file from your computer.
                         </p>
                     </section>
 
-                    <section class="card">
+                    <section class="card admin-section admin-section--preview">
                         <div class="section-header">
+                            <div>
+                                <p class="eyebrow">Source File</p>
+                                <h2>Upload Preview</h2>
+                            </div>
+                        </div>
+                        <div class="admin-file-preview">
+                            <img
+                                id="admin-file-preview-image"
+                                alt="Selected admin template file preview"
+                            />
+                            <div
+                                id="admin-file-preview-meta"
+                                class="admin-file-preview-meta"
+                            ></div>
+                        </div>
+                    </section>
+
+                    <section class="card admin-section admin-section--wide">
+                        <div class="section-header">
+                            <div>
+                                <p class="eyebrow">Layout</p>
+                                <h2>Template Text Zones</h2>
+                            </div>
+                        </div>
+                        <div class="admin-layout-editor">
+                            <section class="admin-layout-editor__controls">
+                                <label>
+                                    Template to edit
+                                    <select
+                                        id="admin-layout-template-select"
+                                    ></select>
+                                </label>
+                                <div class="admin-layout-grid">
+                                    <label>
+                                        Top X
+                                        <input
+                                            type="number"
+                                            id="layout-top-x"
+                                            min="0"
+                                        />
+                                    </label>
+                                    <label>
+                                        Top Y
+                                        <input
+                                            type="number"
+                                            id="layout-top-y"
+                                            min="0"
+                                        />
+                                    </label>
+                                    <label>
+                                        Top Width
+                                        <input
+                                            type="number"
+                                            id="layout-top-width"
+                                            min="1"
+                                        />
+                                    </label>
+                                    <label>
+                                        Bottom X
+                                        <input
+                                            type="number"
+                                            id="layout-bottom-x"
+                                            min="0"
+                                        />
+                                    </label>
+                                    <label>
+                                        Bottom Y
+                                        <input
+                                            type="number"
+                                            id="layout-bottom-y"
+                                            min="0"
+                                        />
+                                    </label>
+                                    <label>
+                                        Bottom Width
+                                        <input
+                                            type="number"
+                                            id="layout-bottom-width"
+                                            min="1"
+                                        />
+                                    </label>
+                                </div>
+                                <div class="admin-layout-sample">
+                                    <label>
+                                        Sample top text
+                                        <input
+                                            type="text"
+                                            id="layout-sample-top"
+                                            value="TOP TEXT"
+                                        />
+                                    </label>
+                                    <label>
+                                        Sample bottom text
+                                        <input
+                                            type="text"
+                                            id="layout-sample-bottom"
+                                            value="BOTTOM TEXT"
+                                        />
+                                    </label>
+                                </div>
+                                <div class="admin-layout-actions">
+                                    <button
+                                        id="admin-layout-preview-button"
+                                        type="button"
+                                        class="secondary"
+                                    >
+                                        Preview layout
+                                    </button>
+                                    <button
+                                        id="admin-layout-save-button"
+                                        type="button"
+                                    >
+                                        Save layout
+                                    </button>
+                                </div>
+                                <p id="admin-layout-status" class="hint">
+                                    Select a template and adjust text zones.
+                                </p>
+                            </section>
+
+                            <section class="admin-layout-editor__preview">
+                                <img
+                                    id="admin-layout-preview-image"
+                                    alt="Template layout preview"
+                                />
+                            </section>
+                        </div>
+
+                        <div class="section-header section-header--spaced">
                             <div>
                                 <p class="eyebrow">Overview</p>
                                 <h2>Registered Templates</h2>

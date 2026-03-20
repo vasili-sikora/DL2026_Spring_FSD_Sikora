@@ -14,6 +14,12 @@ CREATE TABLE templates (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     image_path TEXT NOT NULL,
+    top_text_x INTEGER,
+    top_text_y INTEGER,
+    top_text_width INTEGER,
+    bottom_text_x INTEGER,
+    bottom_text_y INTEGER,
+    bottom_text_width INTEGER,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -63,7 +69,16 @@ def test_template_repository_crud(sqlite_db: SQLiteConnection) -> None:
     repo = TemplateRepository(sqlite_db)
 
     created = repo.create_template(
-        {"name": "Мем😀", "image_path": "data/templates/кот.png"}
+        {
+            "name": "Мем😀",
+            "image_path": "data/templates/кот.png",
+            "top_text_x": 20,
+            "top_text_y": 24,
+            "top_text_width": 400,
+            "bottom_text_x": 20,
+            "bottom_text_y": 300,
+            "bottom_text_width": 400,
+        }
     )
     assert created is not None
     template_id = created["id"]
@@ -71,6 +86,7 @@ def test_template_repository_crud(sqlite_db: SQLiteConnection) -> None:
     loaded = repo.get_template_by_id(template_id)
     assert loaded is not None
     assert loaded["name"] == "Мем😀"
+    assert loaded["top_text_width"] == 400
 
     updated_rows = repo.update_template(
         template_id,
@@ -82,6 +98,20 @@ def test_template_repository_crud(sqlite_db: SQLiteConnection) -> None:
     assert updated is not None
     assert updated["name"] == "Updated"
     assert updated["image_path"] == "data/templates/updated.jpg"
+
+    layout_updated = repo.update_template_layout(
+        template_id,
+        {
+            "top_text_x": 10,
+            "top_text_y": 12,
+            "top_text_width": 320,
+            "bottom_text_x": 15,
+            "bottom_text_y": 240,
+            "bottom_text_width": 300,
+        },
+    )
+    assert layout_updated is not None
+    assert layout_updated["bottom_text_width"] == 300
 
     all_rows = repo.get_all_templates()
     assert len(all_rows) == 1
@@ -98,7 +128,16 @@ def test_generated_images_repository_crud_and_lookup(
     generated_repo = GeneratedImagesRepository(sqlite_db)
     users_repo = UserRepo(sqlite_db)
     template = templates_repo.create_template(
-        {"name": "Base", "image_path": "data/templates/base.jpg"}
+        {
+            "name": "Base",
+            "image_path": "data/templates/base.jpg",
+            "top_text_x": 20,
+            "top_text_y": 24,
+            "top_text_width": 400,
+            "bottom_text_x": 20,
+            "bottom_text_y": 300,
+            "bottom_text_width": 400,
+        }
     )
     user = users_repo.save_user("generated@example.com", "hash-1")
     assert template is not None
@@ -165,3 +204,16 @@ def test_user_repo_save_login_and_duplicate(sqlite_db: SQLiteConnection) -> None
 
     with pytest.raises(UserAlreadyExistsError, match="User already exists"):
         repo.save_user("user@example.com", "hash-2")
+
+
+def test_user_repo_can_promote_existing_user_to_admin(
+    sqlite_db: SQLiteConnection,
+) -> None:
+    repo = UserRepo(sqlite_db)
+    created_user = repo.save_user("admin@example.com", "hash-1")
+
+    updated_user = repo.set_admin_status(created_user["id"], True)
+
+    assert updated_user is not None
+    assert updated_user["is_admin"] == 1
+    assert repo.get_user_by_email("admin@example.com") == updated_user

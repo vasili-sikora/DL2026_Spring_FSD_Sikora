@@ -8,6 +8,7 @@ class GenerateImageRequest(BaseModel):
     text_bottom: str = ""
     font_name: str = "dejavu_sans"
     font_size: int = Field(default=40, ge=12, le=120)
+    font_color: str = Field(default="#ffffff", pattern=r"^#[0-9A-Fa-f]{6}$")
 
 
 class GeneratedImageResponse(BaseModel):
@@ -29,3 +30,4 @@ class PreviewImageRequest(BaseModel):
     text_bottom: str = ""
     font_name: str = "dejavu_sans"
     font_size: int = Field(default=40, ge=12, le=120)
+    font_color: str = Field(default="#ffffff", pattern=r"^#[0-9A-Fa-f]{6}$")

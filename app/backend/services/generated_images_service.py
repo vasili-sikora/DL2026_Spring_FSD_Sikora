@@ -1,15 +1,10 @@
-from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 from app.backend.core.config import GENERATED_IMAGES_DIR
 from app.backend.models.generated_images import (
     GenerateImageRequest,
     PreviewImageRequest,
 )
-from app.backend.repositories.generated_images_repo import (
-    GeneratedImagesRepository,
-)
-from app.backend.repositories.templates_repo import TemplateRepository
 from app.backend.services.exceptions import (
     ImageGenerationValidationError,
     ImageNotFoundError,
@@ -31,11 +26,22 @@ from app.backend.utils.image_generation import (
 RowMapping = dict[str, Any]
 
 
+class GeneratedImagesRepoLike(Protocol):
+    def get_all_images(self, user_id: int) -> list[Any]: ...
+    def get_image_by_id(self, image_id: int, user_id: int) -> Any: ...
+    def create_image(self, image: dict[str, Any]) -> Any: ...
+    def get_image_by_share_token(self, share_token: str) -> Any: ...
+
+
+class TemplateRepoLike(Protocol):
+    def get_template_by_id(self, template_id: int) -> Any: ...
+
+
 class GeneratedImagesService:
     def __init__(
         self,
-        generated_images_repo: GeneratedImagesRepository,
-        templates_repo: TemplateRepository,
+        generated_images_repo: GeneratedImagesRepoLike,
+        templates_repo: TemplateRepoLike,
     ) -> None:
         self.generated_images_repo = generated_images_repo
         self.templates_repo = templates_repo
@@ -56,7 +62,8 @@ class GeneratedImagesService:
     def generate_image(
         self, template_id: int, payload: GenerateImageRequest, user_id: int
     ) -> RowMapping:
-        template_path = self._get_template_image_path(template_id)
+        template = self._get_template(template_id)
+        template_path = resolve_storage_path(template["image_path"])
 
         try:
             share_token, output_path = render_generated_image(
@@ -65,6 +72,8 @@ class GeneratedImagesService:
                 text_bottom=payload.text_bottom,
                 font_name=payload.font_name,
                 font_size=payload.font_size,
+                font_color=payload.font_color,
+                template_layout=template,
                 output_dir=GENERATED_IMAGES_DIR,
             )
         except TemplateImageReadError as exc:
@@ -91,7 +100,8 @@ class GeneratedImagesService:
     def preview_image(self, template_id: int, payload: PreviewImageRequest) -> bytes:
         if payload.font_size < 12 or payload.font_size > 120:
             raise ImageGenerationValidationError("Invalid font size")
-        template_path = self._get_template_image_path(template_id)
+        template = self._get_template(template_id)
+        template_path = resolve_storage_path(template["image_path"])
 
         try:
             return render_preview_image_bytes(
@@ -100,6 +110,8 @@ class GeneratedImagesService:
                 text_bottom=payload.text_bottom,
                 font_name=payload.font_name,
                 font_size=payload.font_size,
+                font_color=payload.font_color,
+                template_layout=template,
             )
         except TemplateImageReadError as exc:
             raise TemplateImageFormatError(
@@ -108,7 +120,7 @@ class GeneratedImagesService:
         except TemplateFontReadError as exc:
             raise TemplateFontError(str(exc)) from exc
 
-    def _get_template_image_path(self, template_id: int) -> Path:
+    def _get_template(self, template_id: int) -> RowMapping:
         template = self.templates_repo.get_template_by_id(template_id)
         if not template:
             raise TemplateNotFoundError("Template not found")
@@ -116,7 +128,7 @@ class GeneratedImagesService:
         template_path = resolve_storage_path(template["image_path"])
         if not template_path.exists():
             raise TemplateImageFileNotFoundError("Template image file not found")
-        return template_path
+        return dict(template)
 
     def get_image_by_share_token(self, share_token: str) -> RowMapping:
         image = self.generated_images_repo.get_image_by_share_token(share_token)

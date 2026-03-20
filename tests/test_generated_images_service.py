@@ -181,6 +181,35 @@ def test_generate_image_success_builds_relative_storage_path(
     assert images_repo.created_payload["user_id"] == 7
 
 
+def test_generate_image_passes_font_color_to_renderer(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    template_file = tmp_path / "template.jpg"
+    template_file.write_bytes(b"stub")
+    service = GeneratedImagesService(
+        FakeGeneratedImagesRepository(),
+        FakeTemplateRepository({"id": 1, "image_path": str(template_file)}),
+    )
+    captured: dict[str, Any] = {}
+
+    def fake_render_generated_image(**kwargs: Any) -> tuple[str, Path]:
+        captured.update(kwargs)
+        return "token123", BASE_DIR / "data" / "generated_images" / "token123.jpg"
+
+    monkeypatch.setattr(
+        "app.backend.services.generated_images_service.render_generated_image",
+        fake_render_generated_image,
+    )
+
+    service.generate_image(
+        1,
+        GenerateImageRequest(font_color="#12ab34"),
+        7,
+    )
+
+    assert captured["font_color"] == "#12ab34"
+
+
 def test_preview_image_rejects_invalid_font_size_even_if_payload_is_untrusted() -> None:
     service = GeneratedImagesService(
         FakeGeneratedImagesRepository(),
@@ -225,6 +254,7 @@ def test_preview_image_accepts_emoji_text_and_returns_jpeg_bytes(
     assert result == b"jpeg-bytes"
     assert captured["text_top"] == "😀 верх"
     assert captured["text_bottom"] == "нижний блок 😺"
+    assert captured["font_color"] == "#ffffff"
 
 
 def test_get_image_by_share_token_raises_when_missing() -> None:

@@ -46,12 +46,38 @@ class UserRepo:
 
             return dict(row) if row else None
 
+    def get_user_by_email(self, email: str) -> dict[str, Any] | None:
+        sql = """SELECT id, email, is_admin FROM users WHERE email = ?"""
+
+        with self._db_conn.get_conn() as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql, (email,))
+            row = cursor.fetchone()
+
+            return dict(row) if row else None
+
     def get_user_by_id(self, user_id: int) -> dict[str, Any] | None:
         sql = """SELECT id, email, is_admin FROM users WHERE id = ?"""
 
         with self._db_conn.get_conn() as conn:
             cursor = conn.cursor()
             cursor.execute(sql, (user_id,))
+            row = cursor.fetchone()
+
+            return dict(row) if row else None
+
+    def set_admin_status(self, user_id: int, is_admin: bool) -> dict[str, Any] | None:
+        sql = """UPDATE users SET is_admin = ? WHERE id = ?"""
+
+        with self._db_conn.get_conn() as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql, (1 if is_admin else 0, user_id))
+            if cursor.rowcount != 1:
+                return None
+
+            cursor.execute(
+                """SELECT id, email, is_admin FROM users WHERE id = ?""", (user_id,)
+            )
             row = cursor.fetchone()
 
             return dict(row) if row else None

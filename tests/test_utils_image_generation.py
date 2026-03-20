@@ -24,6 +24,7 @@ def test_render_preview_image_bytes_returns_jpeg_for_unicode_text(
         text_bottom="Нижний текст 😺",
         font_name="dejavu_sans",
         font_size=36,
+        font_color="#ffffff",
     )
 
     assert result.startswith(b"\xff\xd8")
@@ -43,6 +44,7 @@ def test_render_generated_image_creates_file_and_token(tmp_path: Path) -> None:
         text_bottom="BOTTOM",
         font_name="dejavu_mono",
         font_size=32,
+        font_color="#ff0000",
         output_dir=output_dir,
     )
 
@@ -64,6 +66,7 @@ def test_render_preview_raises_on_unsupported_font(tmp_path: Path) -> None:
             text_bottom="text",
             font_name="totally_unknown_font",
             font_size=30,
+            font_color="#ffffff",
         )
 
 
@@ -78,4 +81,29 @@ def test_render_preview_raises_on_invalid_template_file(tmp_path: Path) -> None:
             text_bottom="text",
             font_name="dejavu_sans",
             font_size=30,
+            font_color="#ffffff",
         )
+
+
+def test_render_preview_respects_zero_based_layout_coordinates(tmp_path: Path) -> None:
+    template_path = tmp_path / "template.jpg"
+    Image.new("RGB", (320, 240), color=(10, 10, 10)).save(template_path, format="JPEG")
+
+    result = render_preview_image_bytes(
+        template_path=template_path,
+        text_top="EDGE",
+        text_bottom="BOTTOM",
+        font_name="dejavu_sans",
+        font_size=24,
+        font_color="#ffffff",
+        template_layout={
+            "top_text_x": 0,
+            "top_text_y": 0,
+            "top_text_width": 160,
+            "bottom_text_x": 0,
+            "bottom_text_y": 180,
+            "bottom_text_width": 160,
+        },
+    )
+
+    assert result.startswith(b"\xff\xd8")

@@ -5,6 +5,7 @@ from app.backend.services.exceptions import (
     InvalidCredentialsError,
     InvalidEmailError,
     InvalidPasswordError,
+    UserNotFoundError,
 )
 from app.backend.services.user_service import UserService
 from app.backend.utils.password import PasswordHasher
@@ -33,6 +34,19 @@ class FakeUserRepo:
         for user in self.users_by_email.values():
             if user["id"] == user_id:
                 return user
+        return None
+
+    def get_user_by_email(self, email: str) -> dict[str, object] | None:
+        return self.users_by_email.get(email)
+
+    def set_admin_status(
+        self, user_id: int, is_admin: bool
+    ) -> dict[str, object] | None:
+        for email, user in self.users_by_email.items():
+            if user["id"] == user_id:
+                updated = {**user, "is_admin": 1 if is_admin else 0}
+                self.users_by_email[email] = updated
+                return updated
         return None
 
 
@@ -126,3 +140,38 @@ def test_login_rejects_unknown_email() -> None:
 
     with pytest.raises(InvalidCredentialsError, match="Invalid email or password"):
         service.login_user(UserLogin(email="ghost@example.com", password="abcd1234"))
+
+
+def test_promote_user_to_admin_updates_existing_user() -> None:
+    repo = FakeUserRepo()
+    repo.users_by_email["admin@example.com"] = {
+        "id": 9,
+        "email": "admin@example.com",
+        "is_admin": 0,
+    }
+
+    service = UserService(repo)
+
+    result = service.promote_user_to_admin("admin@example.com")
+
+    assert result["is_admin"] == 1
+
+
+def test_promote_user_to_admin_rejects_missing_user() -> None:
+    repo = FakeUserRepo()
+    service = UserService(repo)
+
+    with pytest.raises(UserNotFoundError, match="User not found"):
+        service.promote_user_to_admin("ghost@example.com")
+
+
+def test_create_admin_user_sets_admin_flag() -> None:
+    repo = FakeUserRepo()
+    service = UserService(repo)
+
+    result = service.create_admin_user(
+        UserCreate(email="new-admin@example.com", password="abcd1234")
+    )
+
+    assert result["email"] == "new-admin@example.com"
+    assert result["is_admin"] == 1

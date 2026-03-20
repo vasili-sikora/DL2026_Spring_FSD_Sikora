@@ -1,8 +1,9 @@
+from io import BytesIO
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 import pytest
-from fastapi import HTTPException
+from fastapi import HTTPException, UploadFile
 from pydantic import ValidationError
 from slowapi.errors import RateLimitExceeded
 from starlette.requests import Request
@@ -21,13 +22,20 @@ from app.backend.api.templates_routes import (
     get_template_by_id,
     get_template_image,
     get_templates,
+    preview_template_layout,
+    update_template_layout,
+    upload_template,
 )
 from app.backend.core.rate_limit import limiter
 from app.backend.models.generated_images import (
     GenerateImageRequest,
     PreviewImageRequest,
 )
-from app.backend.models.templates import TemplateCreate
+from app.backend.models.templates import (
+    TemplateCreate,
+    TemplateLayoutPreviewRequest,
+    TemplateLayoutUpdate,
+)
 from app.backend.models.user import UserCreate, UserLogin
 from app.backend.services.exceptions import (
     AuthenticationError,
@@ -66,7 +74,7 @@ def make_request(
 
 
 @pytest.fixture(autouse=True)
-def reset_rate_limiter() -> None:
+def reset_rate_limiter() -> Iterator[None]:
     limiter.reset()
     yield
     limiter.reset()
@@ -155,14 +163,44 @@ def test_templates_list_and_get_by_id(monkeypatch: pytest.MonkeyPatch) -> None:
         @staticmethod
         def get_all_templates() -> list[dict[str, Any]]:
             return [
-                {"id": 1, "name": "One", "image_path": "data/templates/one.jpg"},
-                {"id": 2, "name": "Two", "image_path": "data/templates/two.jpg"},
+                {
+                    "id": 1,
+                    "name": "One",
+                    "image_path": "data/templates/one.jpg",
+                    "top_text_x": 20,
+                    "top_text_y": 24,
+                    "top_text_width": 300,
+                    "bottom_text_x": 20,
+                    "bottom_text_y": 220,
+                    "bottom_text_width": 300,
+                },
+                {
+                    "id": 2,
+                    "name": "Two",
+                    "image_path": "data/templates/two.jpg",
+                    "top_text_x": 20,
+                    "top_text_y": 24,
+                    "top_text_width": 300,
+                    "bottom_text_x": 20,
+                    "bottom_text_y": 220,
+                    "bottom_text_width": 300,
+                },
             ]
 
         @staticmethod
         def get_template_by_id(template_id: int) -> dict[str, Any] | None:
             if template_id == 1:
-                return {"id": 1, "name": "One", "image_path": "data/templates/one.jpg"}
+                return {
+                    "id": 1,
+                    "name": "One",
+                    "image_path": "data/templates/one.jpg",
+                    "top_text_x": 20,
+                    "top_text_y": 24,
+                    "top_text_width": 300,
+                    "bottom_text_x": 20,
+                    "bottom_text_y": 220,
+                    "bottom_text_width": 300,
+                }
             return None
 
     monkeypatch.setattr(
@@ -219,6 +257,84 @@ def test_templates_image_returns_fileresponse(
 
     assert response.status_code == 200
     assert str(image_path) in str(response.path)
+
+
+def test_upload_template_maps_service_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    class _TemplateServiceFail:
+        @staticmethod
+        def create_template_from_upload(
+            name: str, image_name: str, image_content: bytes
+        ) -> dict[str, Any]:
+            raise TemplateValidationError("Incorrect file format")
+
+    monkeypatch.setattr(
+        "app.backend.api.templates_routes.template_service", _TemplateServiceFail
+    )
+
+    upload = UploadFile(filename="bad.txt", file=BytesIO(b"bad"))
+
+    with pytest.raises(HTTPException) as exc_info:
+        upload_template("Bad", upload, {"id": 1, "is_admin": 1})
+
+    assert exc_info.value.status_code == 400
+
+
+def test_update_template_layout_maps_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
+    class _TemplateServiceFail:
+        @staticmethod
+        def update_template_layout(
+            template_id: int, payload: dict[str, Any]
+        ) -> dict[str, Any]:
+            raise TemplateValidationError("Template not found")
+
+    monkeypatch.setattr(
+        "app.backend.api.templates_routes.template_service", _TemplateServiceFail
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        update_template_layout(
+            1,
+            TemplateLayoutUpdate(
+                top_text_x=10,
+                top_text_y=10,
+                top_text_width=200,
+                bottom_text_x=10,
+                bottom_text_y=200,
+                bottom_text_width=200,
+            ),
+            {"id": 1, "is_admin": 1},
+        )
+
+    assert exc_info.value.status_code == 404
+
+
+def test_preview_template_layout_maps_validation_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _TemplateServiceFail:
+        @staticmethod
+        def preview_template_layout(**kwargs: Any) -> bytes:
+            raise TemplateValidationError("Top text block exceeds image width")
+
+    monkeypatch.setattr(
+        "app.backend.api.templates_routes.template_service", _TemplateServiceFail
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        preview_template_layout(
+            1,
+            TemplateLayoutPreviewRequest(
+                top_text_x=10,
+                top_text_y=10,
+                top_text_width=600,
+                bottom_text_x=10,
+                bottom_text_y=200,
+                bottom_text_width=200,
+            ),
+            {"id": 1, "is_admin": 1},
+        )
+
+    assert exc_info.value.status_code == 400
 
 
 def test_generated_list_maps_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -289,6 +405,7 @@ def test_generate_maps_domain_errors(
         text_bottom="BOTTOM 😺",
         font_name="dejavu_sans",
         font_size=40,
+        font_color="#ffffff",
     )
 
     with pytest.raises(HTTPException) as exc_info:
@@ -328,6 +445,7 @@ def test_preview_maps_errors(
         text_bottom="BOTTOM 😺",
         font_name="dejavu_sans",
         font_size=40,
+        font_color="#ffffff",
     )
 
     with pytest.raises(HTTPException) as exc_info:

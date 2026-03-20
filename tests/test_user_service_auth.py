@@ -19,6 +19,18 @@ class _Repo:
     def get_user_by_id(user_id: int) -> dict[str, int | str]:
         return {"id": user_id, "email": "user@example.com", "is_admin": 0}
 
+    @staticmethod
+    def get_user_by_email(email: str) -> dict[str, int | str]:
+        return {"id": 4, "email": email, "is_admin": 0}
+
+    @staticmethod
+    def set_admin_status(user_id: int, is_admin: bool) -> dict[str, int | str]:
+        return {
+            "id": user_id,
+            "email": "user@example.com",
+            "is_admin": int(is_admin),
+        }
+
 
 def test_register_user_returns_user_payload() -> None:
     service = UserService(_Repo())
