@@ -37,18 +37,18 @@ class GeneratedImagesRepository:
             )
             return cursor.fetchone()
 
-    def get_all_images(self) -> list[sqlite3.Row]:
-        sql = """SELECT * FROM generated_images"""
+    def get_all_images(self, user_id) -> list[sqlite3.Row]:
+        sql = """SELECT * FROM generated_images WHERE user_id = ?"""
         with self.db_conn.get_conn() as conn:
             cursor = conn.cursor()
-            cursor.execute(sql)
+            cursor.execute(sql, (user_id,))
             return cursor.fetchall()
 
-    def get_image_by_id(self, image_id: int) -> sqlite3.Row | None:
-        sql = """SELECT * FROM generated_images WHERE id = ?"""
+    def get_image_by_id(self, image_id: int, user_id: int) -> sqlite3.Row | None:
+        sql = """SELECT * FROM generated_images WHERE id = ? AND user_id = ?"""
         with self.db_conn.get_conn() as conn:
             cursor = conn.cursor()
-            cursor.execute(sql, (image_id,))
+            cursor.execute(sql, (image_id, user_id))
             return cursor.fetchone()
 
     def get_image_by_share_token(self, share_token: str) -> sqlite3.Row | None:

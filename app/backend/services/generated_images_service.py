@@ -34,13 +34,15 @@ class GeneratedImagesService:
         self.generated_images_repo = generated_images_repo
         self.templates_repo = templates_repo
 
-    def get_all_images(self) -> list[RowMapping]:
-        images = self.generated_images_repo.get_all_images()
+    def get_all_images(self, user_id: int) -> list[RowMapping]:
+        if user_id < 1:
+            raise ValueError("Invalid user id")
+        images = self.generated_images_repo.get_all_images(user_id)
 
         return [dict(image) for image in images]
 
-    def get_image_by_id(self, image_id: int) -> RowMapping:
-        image = self.generated_images_repo.get_image_by_id(image_id)
+    def get_image_by_id(self, image_id: int, user_id: int) -> RowMapping:
+        image = self.generated_images_repo.get_image_by_id(image_id, user_id)
         if not image:
             raise ImageNotFoundError("Image not found")
         return dict(image)

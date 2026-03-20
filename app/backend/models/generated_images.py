@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 
 class GenerateImageRequest(BaseModel):
+    user_id: int
     text_top: str = ""
     text_bottom: str = ""
     font_name: str = "dejavu_sans"
