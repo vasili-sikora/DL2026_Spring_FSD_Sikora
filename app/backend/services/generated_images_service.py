@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Any
 
-from app.backend.core.config import BASE_DIR, GENERATED_IMAGES_DIR
+from app.backend.core.config import GENERATED_IMAGES_DIR
 from app.backend.models.generated_images import (
     GenerateImageRequest,
     PreviewImageRequest,
@@ -17,13 +17,13 @@ from app.backend.services.exceptions import (
     TemplateImageFormatError,
     TemplateNotFoundError,
 )
+from app.backend.storage.paths import build_relative_storage_path, resolve_storage_path
 from app.backend.utils.image_generation import (
     TemplateFontReadError,
     TemplateImageReadError,
     render_generated_image,
     render_preview_image_bytes,
 )
-from app.backend.utils.path_resolution import resolve_storage_path
 
 RowMapping = dict[str, Any]
 
@@ -76,7 +76,7 @@ class GeneratedImagesService:
                 "template_id": template_id,
                 "text_top": payload.text_top,
                 "text_bottom": payload.text_bottom,
-                "image_path": str(output_path.relative_to(BASE_DIR)),
+                "image_path": build_relative_storage_path(output_path),
                 "share_token": share_token,
                 "user_id": user_id,
             }

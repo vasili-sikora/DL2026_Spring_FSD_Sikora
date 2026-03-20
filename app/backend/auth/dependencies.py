@@ -1,6 +1,7 @@
 from fastapi import Cookie, HTTPException
 
-from app.backend.utils.session import SESSION_COOKIE_NAME, read_session_token
+from app.backend.auth.session import read_session_token
+from app.backend.core.config import SESSION_COOKIE_NAME
 
 
 def get_current_user_id(

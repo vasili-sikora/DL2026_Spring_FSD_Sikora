@@ -61,7 +61,9 @@ def test_sqlite_connection_enables_fk_and_row_factory(
 def test_template_repository_crud(sqlite_db: SQLiteConnection) -> None:
     repo = TemplateRepository(sqlite_db)
 
-    created = repo.create_template({"name": "Мем😀", "image_name": "кот.png"})
+    created = repo.create_template(
+        {"name": "Мем😀", "image_path": "data/templates/кот.png"}
+    )
     assert created is not None
     template_id = created["id"]
 
@@ -95,7 +97,7 @@ def test_generated_images_repository_crud_and_lookup(
     generated_repo = GeneratedImagesRepository(sqlite_db)
     users_repo = UserRepo(sqlite_db)
     template = templates_repo.create_template(
-        {"name": "Base", "image_name": "base.jpg"}
+        {"name": "Base", "image_path": "data/templates/base.jpg"}
     )
     user = users_repo.save_user("generated@example.com", "hash-1")
     assert template is not None

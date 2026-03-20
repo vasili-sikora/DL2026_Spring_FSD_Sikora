@@ -1,6 +1,7 @@
 from typing import Any, Mapping
 
 from app.backend.repositories.templates_repo import TemplateRepository
+from app.backend.storage.template_storage import build_template_image_path
 
 TemplatePayload = Mapping[str, str]
 TemplateRow = dict[str, Any]
@@ -13,10 +14,15 @@ class TemplateService:
     def create_template(self, template: TemplatePayload) -> TemplateRow:
         if not template["name"]:
             raise ValueError("Template name required")
-        if not template["image_name"].endswith((".jpeg", ".png", "jpg")):
-            raise ValueError("Incorrect file format")
 
-        created = self.repo.create_template(template)
+        image_path = build_template_image_path(template["image_name"])
+
+        created = self.repo.create_template(
+            {
+                "name": template["name"],
+                "image_path": image_path,
+            }
+        )
         if not created:
             raise ValueError("Failed to create template")
         return dict(created)

@@ -2,7 +2,7 @@ from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
 
-from alembic import context
+from alembic import context  # type: ignore[attr-defined]
 from app.backend.core.config import SQLALCHEMY_DATABASE_URL
 
 # this is the Alembic Config object, which provides

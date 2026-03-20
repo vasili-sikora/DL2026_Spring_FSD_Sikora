@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Final
+from typing import Final, Literal, cast
 
 BASE_DIR: Final[Path] = Path(__file__).resolve().parents[3]
 
@@ -45,6 +45,11 @@ def _get_path_env(name: str, default: Path) -> Path:
     return BASE_DIR / candidate
 
 
+def _get_list_env(name: str) -> list[str]:
+    value = os.getenv(name, "")
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
 _load_env_file(BASE_DIR / ".env")
 
 DATA_DIR: Final[Path] = _get_path_env("DATA_DIR", BASE_DIR / "data")
@@ -61,10 +66,27 @@ SESSION_SECRET_KEY: Final[str] = os.getenv(
     "SESSION_SECRET_KEY", "change-me-local-dev-only"
 )
 SESSION_COOKIE_NAME: Final[str] = os.getenv("SESSION_COOKIE_NAME", "devcraft_session")
-SESSION_COOKIE_SAMESITE: Final[str] = os.getenv("SESSION_COOKIE_SAMESITE", "lax")
+SessionSameSite = Literal["lax", "strict", "none"]
+
+
+def _get_samesite_env(name: str, default: SessionSameSite) -> SessionSameSite:
+    value = os.getenv(name)
+    if value is None:
+        return default
+
+    normalized = value.strip().lower()
+    if normalized not in {"lax", "strict", "none"}:
+        return default
+    return cast(SessionSameSite, normalized)
+
+
+SESSION_COOKIE_SAMESITE: Final[SessionSameSite] = _get_samesite_env(
+    "SESSION_COOKIE_SAMESITE", "lax"
+)
 SESSION_COOKIE_SECURE: Final[bool] = _get_bool_env("SESSION_COOKIE_SECURE", False)
 SESSION_MAX_AGE_SECONDS: Final[int] = _get_int_env(
     "SESSION_MAX_AGE_SECONDS", 60 * 60 * 24 * 7
 )
 
 SQLALCHEMY_DATABASE_URL: Final[str] = f"sqlite:///{DB_PATH}"
+CORS_ALLOWED_ORIGINS: Final[list[str]] = _get_list_env("CORS_ALLOWED_ORIGINS")

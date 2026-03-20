@@ -12,7 +12,7 @@ class FakeTemplateRepository:
         return {
             "id": 1,
             "name": template["name"],
-            "image_path": f"data/templates/{template['image_name']}",
+            "image_path": template["image_path"],
             "created_at": "2026-03-17T00:00:00",
         }
 
@@ -64,7 +64,7 @@ def test_create_template_accepts_unicode_and_emoji_file_name() -> None:
 
     assert result["id"] == 1
     assert repo.created_payload is not None
-    assert repo.created_payload["image_name"] == "кот😀.png"
+    assert repo.created_payload["image_path"] == "data/templates/кот😀.png"
 
 
 def test_get_all_templates_passes_repository_result() -> None:
@@ -87,9 +87,8 @@ def test_get_template_by_id_passes_repository_result() -> None:
     assert missing is None
 
 
-@pytest.mark.xfail(reason="Current validation allows path traversal in image_name")
 def test_create_template_should_reject_path_traversal() -> None:
     service = TemplateService(FakeTemplateRepository())
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="must not contain directories"):
         service.create_template({"name": "Traversal", "image_name": "../../secret.png"})

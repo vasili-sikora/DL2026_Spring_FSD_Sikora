@@ -1,8 +1,6 @@
 import sqlite3
-from pathlib import Path
 from typing import Mapping
 
-from app.backend.core.config import TEMPLATES_DIR
 from app.backend.db.sqlite_conn import SQLiteConnection
 
 TemplatePayload = Mapping[str, str]
@@ -15,10 +13,8 @@ class TemplateRepository:
     def create_template(self, template: TemplatePayload) -> sqlite3.Row | None:
         sql = """INSERT INTO templates (name, image_path) VALUES (?, ?)"""
         with self.db_conn.get_conn() as conn:
-            path = str(Path(TEMPLATES_DIR) / template["image_name"])
-
             cursor = conn.cursor()
-            cursor.execute(sql, (template["name"], path))
+            cursor.execute(sql, (template["name"], template["image_path"]))
 
             cursor.execute(
                 """

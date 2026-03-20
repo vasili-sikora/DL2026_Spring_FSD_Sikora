@@ -1,8 +1,8 @@
 import pytest
 from fastapi import HTTPException
 
-from app.backend.utils.auth import get_current_user_id
-from app.backend.utils.session import create_session_token
+from app.backend.auth.dependencies import get_current_user_id
+from app.backend.auth.session import create_session_token
 
 
 def test_get_current_user_id_accepts_valid_session_cookie() -> None:

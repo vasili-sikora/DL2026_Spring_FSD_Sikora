@@ -1,3 +1,6 @@
+import { api, requestPreviewImage } from "./api.js";
+import { loadCurrentUser, login, logout, register } from "./auth-client.js";
+
 const templateSelect = document.getElementById("template-select");
 const templatePicker = document.getElementById("template-picker");
 const templatePreviewImage = document.getElementById("template-preview-image");
@@ -50,22 +53,6 @@ function showToast(message, isError = false) {
   toast.classList.toggle("error", isError);
   toast.classList.add("show");
   setTimeout(() => toast.classList.remove("show"), 2600);
-}
-
-function extractErrorDetail(body, fallback) {
-  if (!body || body.detail == null) {
-    return fallback;
-  }
-  if (typeof body.detail === "string") {
-    return body.detail;
-  }
-  if (Array.isArray(body.detail) && body.detail.length) {
-    const first = body.detail[0];
-    if (first && typeof first === "object" && typeof first.msg === "string") {
-      return first.msg;
-    }
-  }
-  return JSON.stringify(body.detail);
 }
 
 function loadStoredTheme() {
@@ -178,58 +165,17 @@ function renderPage() {
   }
 }
 
-async function api(path, options = {}) {
-  const headers = {
-    "Content-Type": "application/json",
-    ...(options.headers || {}),
-  };
-
-  const res = await fetch(path, {
-    ...options,
-    headers,
-    credentials: "same-origin",
-  });
-  if (!res.ok) {
-    let errorDetail = `${res.status} ${res.statusText}`;
-    try {
-      const body = await res.json();
-      errorDetail = extractErrorDetail(body, errorDetail);
-    } catch {
-      // keep fallback text
-    }
-    throw new Error(errorDetail);
-  }
-  return res.json();
-}
-
-async function requestPreviewImage(templateId, payload) {
+async function loadPreviewImage(templateId, payload) {
   if (previewRequestController) {
     previewRequestController.abort();
   }
 
-  const headers = { "Content-Type": "application/json" };
-
   previewRequestController = new AbortController();
-  const res = await fetch(`/templates/${templateId}/preview`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(payload),
-    signal: previewRequestController.signal,
-    credentials: "same-origin",
-  });
-
-  if (!res.ok) {
-    let errorDetail = `${res.status} ${res.statusText}`;
-    try {
-      const body = await res.json();
-      errorDetail = extractErrorDetail(body, errorDetail);
-    } catch {
-      // keep fallback
-    }
-    throw new Error(errorDetail);
-  }
-
-  return res.blob();
+  return requestPreviewImage(
+    templateId,
+    payload,
+    previewRequestController.signal,
+  );
 }
 
 function buildGeneratePayload() {
@@ -259,7 +205,7 @@ async function refreshPreview() {
   }
 
   try {
-    const blob = await requestPreviewImage(templateId, buildGeneratePayload());
+    const blob = await loadPreviewImage(templateId, buildGeneratePayload());
     if (previewObjectUrl) {
       URL.revokeObjectURL(previewObjectUrl);
     }
@@ -518,12 +464,7 @@ window.addEventListener("hashchange", renderPage);
 navLogin.addEventListener("click", () => openAuthModal("login"));
 navRegister.addEventListener("click", () => openAuthModal("register"));
 navLogout.addEventListener("click", async () => {
-  try {
-    await api("/auth/logout", { method: "POST" });
-  } catch {
-    // Ignore logout response errors and still clear client state.
-  }
-
+  await logout();
   currentUser = null;
   renderGeneratedImages([]);
   renderAuthState();
@@ -557,11 +498,8 @@ authForm.addEventListener("submit", async (event) => {
     authMode === "login" ? "Logging in..." : "Registering...";
 
   try {
-    const endpoint = authMode === "login" ? "/auth/login" : "/auth/register";
-    const user = await api(endpoint, {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
+    const user =
+      authMode === "login" ? await login(payload) : await register(payload);
     currentUser = user;
     renderAuthState();
     renderPage();
@@ -584,12 +522,7 @@ authTogglePassword.addEventListener("click", togglePasswordVisibility);
 
 async function bootstrap() {
   applyTheme(loadStoredTheme());
-
-  try {
-    currentUser = await api("/auth/me");
-  } catch {
-    currentUser = null;
-  }
+  currentUser = await loadCurrentUser();
 
   renderAuthState();
   renderPage();

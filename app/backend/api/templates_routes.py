@@ -3,17 +3,11 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from starlette.responses import FileResponse
 
-from app.backend.db.sqlite_conn import SQLiteConnection
+from app.backend.dependencies import template_service
 from app.backend.models.templates import TemplateCreate
-from app.backend.repositories.templates_repo import TemplateRepository
-from app.backend.services.templates_service import TemplateService
-from app.backend.utils.path_resolution import resolve_storage_path
+from app.backend.storage.paths import resolve_storage_path
 
 templates_router: APIRouter = APIRouter()
-
-db: SQLiteConnection = SQLiteConnection()
-template_repo: TemplateRepository = TemplateRepository(db)
-template_service: TemplateService = TemplateService(template_repo)
 
 
 @templates_router.get("/templates")

@@ -3,8 +3,8 @@ from pathlib import Path
 import pytest
 
 from app.backend.core.config import BASE_DIR
+from app.backend.storage.paths import resolve_storage_path
 from app.backend.utils.password import PasswordHasher, PasswordValidator
-from app.backend.utils.path_resolution import resolve_storage_path
 from app.backend.utils.validate_email import EmailValidator
 
 

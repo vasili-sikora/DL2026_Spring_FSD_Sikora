@@ -3,19 +3,16 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from starlette.responses import FileResponse
 
+from app.backend.auth.dependencies import get_current_user_id
 from app.backend.core.config import BASE_DIR
 from app.backend.core.rate_limit import limiter
-from app.backend.db.sqlite_conn import SQLiteConnection
+from app.backend.dependencies import generated_images_service
 from app.backend.models.generated_images import (
     ErrorResponse,
     GeneratedImageResponse,
     GenerateImageRequest,
     PreviewImageRequest,
 )
-from app.backend.repositories.generated_images_repo import (
-    GeneratedImagesRepository,
-)
-from app.backend.repositories.templates_repo import TemplateRepository
 from app.backend.services.exceptions import (
     ImageNotFoundError,
     TemplateFontError,
@@ -23,17 +20,8 @@ from app.backend.services.exceptions import (
     TemplateImageFormatError,
     TemplateNotFoundError,
 )
-from app.backend.services.generated_images_service import GeneratedImagesService
-from app.backend.utils.auth import get_current_user_id
 
 generated_images_router: APIRouter = APIRouter()
-
-db: SQLiteConnection = SQLiteConnection()
-generated_images_repo: GeneratedImagesRepository = GeneratedImagesRepository(db)
-templates_repo: TemplateRepository = TemplateRepository(db)
-generated_images_service: GeneratedImagesService = GeneratedImagesService(
-    generated_images_repo, templates_repo
-)
 
 
 @generated_images_router.get("/generated_images")

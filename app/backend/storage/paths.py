@@ -9,17 +9,20 @@ def resolve_storage_path(path_value: str | Path) -> Path:
         if candidate.exists():
             return candidate
 
-        # Support old absolute paths persisted before project directory move.
         try:
             data_index = candidate.parts.index("data")
         except ValueError:
             return candidate
 
-        migrated = BASE_DIR / Path(*candidate.parts[data_index:])
-        return migrated
+        return BASE_DIR / Path(*candidate.parts[data_index:])
 
-    base_candidate = BASE_DIR / candidate
-    if base_candidate.exists():
-        return base_candidate
+    return BASE_DIR / candidate
 
-    return base_candidate
+
+def build_relative_storage_path(path_value: Path) -> str:
+    try:
+        return str(path_value.relative_to(BASE_DIR))
+    except ValueError as exc:
+        raise ValueError(
+            "Storage path must stay inside project base directory"
+        ) from exc

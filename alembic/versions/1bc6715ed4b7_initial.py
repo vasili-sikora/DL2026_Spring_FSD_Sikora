@@ -8,7 +8,7 @@ Create Date: 2026-03-17 16:31:33.079062
 
 from typing import Sequence, Union
 
-from alembic import op
+from alembic import op  # type: ignore[attr-defined]
 
 # revision identifiers, used by Alembic.
 revision: str = "1bc6715ed4b7"
