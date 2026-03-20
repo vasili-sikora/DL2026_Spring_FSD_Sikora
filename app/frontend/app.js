@@ -68,23 +68,6 @@ function extractErrorDetail(body, fallback) {
   return JSON.stringify(body.detail);
 }
 
-function loadStoredUser() {
-  try {
-    const raw = localStorage.getItem("dc_user");
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-function saveStoredUser(user) {
-  localStorage.setItem("dc_user", JSON.stringify(user));
-}
-
-function clearStoredUser() {
-  localStorage.removeItem("dc_user");
-}
-
 function loadStoredTheme() {
   const theme = localStorage.getItem(THEME_STORAGE_KEY);
   return theme === "dark" ? "dark" : "light";
@@ -196,9 +179,15 @@ function renderPage() {
 }
 
 async function api(path, options = {}) {
+  const headers = {
+    "Content-Type": "application/json",
+    ...(options.headers || {}),
+  };
+
   const res = await fetch(path, {
-    headers: { "Content-Type": "application/json" },
     ...options,
+    headers,
+    credentials: "same-origin",
   });
   if (!res.ok) {
     let errorDetail = `${res.status} ${res.statusText}`;
@@ -218,12 +207,15 @@ async function requestPreviewImage(templateId, payload) {
     previewRequestController.abort();
   }
 
+  const headers = { "Content-Type": "application/json" };
+
   previewRequestController = new AbortController();
   const res = await fetch(`/templates/${templateId}/preview`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(payload),
     signal: previewRequestController.signal,
+    credentials: "same-origin",
   });
 
   if (!res.ok) {
@@ -466,6 +458,11 @@ async function loadTemplates() {
 }
 
 async function loadGeneratedImages() {
+  if (!currentUser) {
+    renderGeneratedImages([]);
+    return;
+  }
+
   const images = await api("/generated_images");
   renderGeneratedImages(images);
 }
@@ -520,9 +517,15 @@ window.addEventListener("hashchange", renderPage);
 
 navLogin.addEventListener("click", () => openAuthModal("login"));
 navRegister.addEventListener("click", () => openAuthModal("register"));
-navLogout.addEventListener("click", () => {
+navLogout.addEventListener("click", async () => {
+  try {
+    await api("/auth/logout", { method: "POST" });
+  } catch {
+    // Ignore logout response errors and still clear client state.
+  }
+
   currentUser = null;
-  clearStoredUser();
+  renderGeneratedImages([]);
   renderAuthState();
   renderPage();
   showToast("Logged out");
@@ -560,9 +563,9 @@ authForm.addEventListener("submit", async (event) => {
       body: JSON.stringify(payload),
     });
     currentUser = user;
-    saveStoredUser(user);
     renderAuthState();
     renderPage();
+    await loadGeneratedImages();
     authPassword.value = "";
     authConfirmPassword.value = "";
     authStatus.textContent = `Logged in as ${user.email}`;
@@ -581,7 +584,13 @@ authTogglePassword.addEventListener("click", togglePasswordVisibility);
 
 async function bootstrap() {
   applyTheme(loadStoredTheme());
-  currentUser = loadStoredUser();
+
+  try {
+    currentUser = await api("/auth/me");
+  } catch {
+    currentUser = null;
+  }
+
   renderAuthState();
   renderPage();
 

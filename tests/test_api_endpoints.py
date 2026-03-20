@@ -20,13 +20,13 @@ class _TemplateServiceFound:
 
 class _GeneratedImagesServiceMissing:
     @staticmethod
-    def get_all_images():
+    def get_all_images(_user_id):
         raise ImageNotFoundError("Images not found")
 
 
 class _GeneratedImagesServiceFound:
     @staticmethod
-    def get_all_images():
+    def get_all_images(_user_id):
         return [{"id": 1, "template_id": 1, "share_token": "abc"}]
 
 
@@ -60,7 +60,7 @@ def test_get_images_returns_404_when_empty_service_error(monkeypatch):
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        get_images()
+        get_images(1)
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "Images not found"
@@ -72,7 +72,7 @@ def test_get_images_returns_list_on_success(monkeypatch):
         _GeneratedImagesServiceFound,
     )
 
-    result = get_images()
+    result = get_images(1)
 
     assert len(result) == 1
     assert result[0]["id"] == 1

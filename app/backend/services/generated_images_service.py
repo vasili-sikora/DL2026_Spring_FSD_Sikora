@@ -2,7 +2,10 @@ from pathlib import Path
 from typing import Any
 
 from app.backend.core.config import BASE_DIR, GENERATED_IMAGES_DIR
-from app.backend.models.generated_images import GenerateImageRequest
+from app.backend.models.generated_images import (
+    GenerateImageRequest,
+    PreviewImageRequest,
+)
 from app.backend.repositories.generated_images_repo import (
     GeneratedImagesRepository,
 )
@@ -48,7 +51,7 @@ class GeneratedImagesService:
         return dict(image)
 
     def generate_image(
-        self, template_id: int, payload: GenerateImageRequest
+        self, template_id: int, payload: GenerateImageRequest, user_id: int
     ) -> RowMapping:
         template_path = self._get_template_image_path(template_id)
 
@@ -75,14 +78,14 @@ class GeneratedImagesService:
                 "text_bottom": payload.text_bottom,
                 "image_path": str(output_path.relative_to(BASE_DIR)),
                 "share_token": share_token,
-                "user_id": payload.user_id
+                "user_id": user_id,
             }
         )
         if not record:
             raise ValueError("Failed to create generated image")
         return dict(record)
 
-    def preview_image(self, template_id: int, payload: GenerateImageRequest) -> bytes:
+    def preview_image(self, template_id: int, payload: PreviewImageRequest) -> bytes:
         if payload.font_size < 12 or payload.font_size > 120:
             raise ValueError("Invalid font size")
         template_path = self._get_template_image_path(template_id)

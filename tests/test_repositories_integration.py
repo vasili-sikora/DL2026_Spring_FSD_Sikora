@@ -19,12 +19,14 @@ CREATE TABLE templates (
 CREATE TABLE generated_images (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     template_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
     text_top TEXT,
     text_bottom TEXT,
     image_path TEXT NOT NULL,
     share_token TEXT UNIQUE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (template_id) REFERENCES templates(id)
+    FOREIGN KEY (template_id) REFERENCES templates(id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
 CREATE TABLE users (
@@ -91,14 +93,18 @@ def test_generated_images_repository_crud_and_lookup(
 ) -> None:
     templates_repo = TemplateRepository(sqlite_db)
     generated_repo = GeneratedImagesRepository(sqlite_db)
+    users_repo = UserRepo(sqlite_db)
     template = templates_repo.create_template(
         {"name": "Base", "image_name": "base.jpg"}
     )
+    user = users_repo.save_user("generated@example.com", "hash-1")
     assert template is not None
+    assert user is not None
 
     created = generated_repo.create_image(
         {
             "template_id": template["id"],
+            "user_id": user["id"],
             "text_top": "😀 TOP",
             "text_bottom": "BOTTOM 😺",
             "image_path": "data/generated_images/item.jpg",
@@ -107,7 +113,7 @@ def test_generated_images_repository_crud_and_lookup(
     )
     assert created is not None
 
-    fetched_by_id = generated_repo.get_image_by_id(created["id"])
+    fetched_by_id = generated_repo.get_image_by_id(created["id"], user["id"])
     assert fetched_by_id is not None
     assert fetched_by_id["share_token"] == "token-1"
 
@@ -115,7 +121,7 @@ def test_generated_images_repository_crud_and_lookup(
     assert fetched_by_token is not None
     assert fetched_by_token["id"] == created["id"]
 
-    all_images = generated_repo.get_all_images()
+    all_images = generated_repo.get_all_images(user["id"])
     assert len(all_images) == 1
 
 
@@ -128,6 +134,7 @@ def test_generated_images_repository_respects_foreign_key(
         repo.create_image(
             {
                 "template_id": 999999,
+                "user_id": 999999,
                 "text_top": "A",
                 "text_bottom": "B",
                 "image_path": "data/generated_images/bad.jpg",

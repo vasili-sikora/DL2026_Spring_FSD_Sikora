@@ -1,7 +1,6 @@
-from app.backend.models.generated_images import PreviewImageRequest
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from starlette.responses import FileResponse
 
 from app.backend.core.config import BASE_DIR
@@ -11,6 +10,7 @@ from app.backend.models.generated_images import (
     ErrorResponse,
     GeneratedImageResponse,
     GenerateImageRequest,
+    PreviewImageRequest,
 )
 from app.backend.repositories.generated_images_repo import (
     GeneratedImagesRepository,
@@ -24,6 +24,7 @@ from app.backend.services.exceptions import (
     TemplateNotFoundError,
 )
 from app.backend.services.generated_images_service import GeneratedImagesService
+from app.backend.utils.auth import get_current_user_id
 
 generated_images_router: APIRouter = APIRouter()
 
@@ -36,9 +37,11 @@ generated_images_service: GeneratedImagesService = GeneratedImagesService(
 
 
 @generated_images_router.get("/generated_images")
-def get_images(user_id) -> list[dict[str, Any]]:
+def get_images(
+    current_user_id: int = Depends(get_current_user_id),
+) -> list[dict[str, Any]]:
     try:
-        images = generated_images_service.get_all_images(user_id)
+        images = generated_images_service.get_all_images(current_user_id)
     except ImageNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -52,9 +55,11 @@ def get_images(user_id) -> list[dict[str, Any]]:
         404: {"model": ErrorResponse, "description": "Image not found"},
     },
 )
-def get_image_by_id(image_id: int) -> GeneratedImageResponse:
+def get_image_by_id(
+    image_id: int, current_user_id: int = Depends(get_current_user_id)
+) -> GeneratedImageResponse:
     try:
-        image = generated_images_service.get_image_by_id(image_id)
+        image = generated_images_service.get_image_by_id(image_id, current_user_id)
     except ImageNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return GeneratedImageResponse(**dict(image))
@@ -76,10 +81,15 @@ def get_image_by_id(image_id: int) -> GeneratedImageResponse:
 )
 @limiter.limit("10/minute")
 def generate_image(
-    request: Request, template_id: int, payload: GenerateImageRequest
+    request: Request,
+    template_id: int,
+    payload: GenerateImageRequest,
+    current_user_id: int = Depends(get_current_user_id),
 ) -> GeneratedImageResponse:
     try:
-        image = generated_images_service.generate_image(template_id, payload)
+        image = generated_images_service.generate_image(
+            template_id, payload, current_user_id
+        )
     except TemplateNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except TemplateImageFileNotFoundError as exc:

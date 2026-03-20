@@ -44,3 +44,13 @@ class UserService:
         if not PasswordHasher.verify(password, pswd_hash):
             return False
         return True
+
+    def get_user_by_id(self, user_id: int) -> dict[str, Any]:
+        if user_id < 1:
+            raise ValueError("Invalid user id")
+
+        user = self._repo.get_user_by_id(user_id)
+        if not user:
+            raise ValueError("User not found")
+
+        return user

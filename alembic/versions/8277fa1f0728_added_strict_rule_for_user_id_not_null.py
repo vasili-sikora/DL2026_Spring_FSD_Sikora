@@ -5,16 +5,16 @@ Revises: cef04dfe0059
 Create Date: 2026-03-20 10:31:46.206221
 
 """
-from sqlalchemy import false
+
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = '8277fa1f0728'
-down_revision: Union[str, Sequence[str], None] = 'cef04dfe0059'
+revision: str = "8277fa1f0728"
+down_revision: Union[str, Sequence[str], None] = "cef04dfe0059"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

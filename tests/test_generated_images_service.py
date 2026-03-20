@@ -4,7 +4,10 @@ from typing import Any
 import pytest
 
 from app.backend.core.config import BASE_DIR
-from app.backend.models.generated_images import GenerateImageRequest
+from app.backend.models.generated_images import (
+    GenerateImageRequest,
+    PreviewImageRequest,
+)
 from app.backend.services.exceptions import (
     ImageNotFoundError,
     TemplateFontError,
@@ -38,10 +41,10 @@ class FakeGeneratedImagesRepository:
             "created_at": "2026-03-17T00:00:00",
         }
 
-    def get_all_images(self) -> list[dict[str, Any]]:
+    def get_all_images(self, _user_id: int) -> list[dict[str, Any]]:
         return self.images
 
-    def get_image_by_id(self, image_id: int) -> dict[str, Any] | None:
+    def get_image_by_id(self, image_id: int, _user_id: int) -> dict[str, Any] | None:
         return self.image_by_id.get(image_id)
 
     def get_image_by_share_token(self, share_token: str) -> dict[str, Any] | None:
@@ -62,7 +65,7 @@ def test_get_all_images_returns_empty_list_without_error() -> None:
     images_repo = FakeGeneratedImagesRepository()
     service = GeneratedImagesService(images_repo, FakeTemplateRepository(None))
 
-    result = service.get_all_images()
+    result = service.get_all_images(1)
 
     assert result == []
 
@@ -73,7 +76,7 @@ def test_get_image_by_id_raises_when_missing() -> None:
     )
 
     with pytest.raises(ImageNotFoundError, match="Image not found"):
-        service.get_image_by_id(404)
+        service.get_image_by_id(404, 1)
 
 
 def test_generate_image_raises_when_template_missing() -> None:
@@ -83,7 +86,7 @@ def test_generate_image_raises_when_template_missing() -> None:
     )
 
     with pytest.raises(TemplateNotFoundError, match="Template not found"):
-        service.generate_image(1, GenerateImageRequest())
+        service.generate_image(1, GenerateImageRequest(), 1)
 
 
 def test_generate_image_raises_when_template_file_missing(tmp_path: Path) -> None:
@@ -96,7 +99,7 @@ def test_generate_image_raises_when_template_file_missing(tmp_path: Path) -> Non
     with pytest.raises(
         TemplateImageFileNotFoundError, match="Template image file not found"
     ):
-        service.generate_image(1, GenerateImageRequest())
+        service.generate_image(1, GenerateImageRequest(), 1)
 
 
 def test_generate_image_maps_template_image_read_error(
@@ -120,7 +123,7 @@ def test_generate_image_maps_template_image_read_error(
     with pytest.raises(
         TemplateImageFormatError, match="Template image format is not supported"
     ):
-        service.generate_image(1, GenerateImageRequest())
+        service.generate_image(1, GenerateImageRequest(), 1)
 
 
 def test_generate_image_maps_font_read_error(
@@ -142,7 +145,7 @@ def test_generate_image_maps_font_read_error(
     )
 
     with pytest.raises(TemplateFontError, match="Unsupported font"):
-        service.generate_image(1, GenerateImageRequest(font_name="broken_font"))
+        service.generate_image(1, GenerateImageRequest(font_name="broken_font"), 1)
 
 
 def test_generate_image_success_builds_relative_storage_path(
@@ -165,7 +168,7 @@ def test_generate_image_success_builds_relative_storage_path(
     )
 
     payload = GenerateImageRequest(text_top="TOP", text_bottom="BOTTOM")
-    result = service.generate_image(1, payload)
+    result = service.generate_image(1, payload, 7)
 
     assert result["share_token"] == "token123"
     assert images_repo.created_payload is not None
@@ -173,6 +176,7 @@ def test_generate_image_success_builds_relative_storage_path(
         images_repo.created_payload["image_path"]
         == "data/generated_images/token123.jpg"
     )
+    assert images_repo.created_payload["user_id"] == 7
 
 
 def test_preview_image_rejects_invalid_font_size_even_if_payload_is_untrusted() -> None:
@@ -182,7 +186,7 @@ def test_preview_image_rejects_invalid_font_size_even_if_payload_is_untrusted() 
             {"id": 1, "image_path": str(BASE_DIR / "data" / "templates" / "x.jpg")}
         ),
     )
-    untrusted_payload = GenerateImageRequest.model_construct(
+    untrusted_payload = PreviewImageRequest.model_construct(
         text_top="",
         text_bottom="",
         font_name="dejavu_sans",
@@ -213,7 +217,7 @@ def test_preview_image_accepts_emoji_text_and_returns_jpeg_bytes(
         fake_preview,
     )
 
-    payload = GenerateImageRequest(text_top="😀 верх", text_bottom="нижний блок 😺")
+    payload = PreviewImageRequest(text_top="😀 верх", text_bottom="нижний блок 😺")
     result = service.preview_image(1, payload)
 
     assert result == b"jpeg-bytes"
@@ -228,3 +232,12 @@ def test_get_image_by_share_token_raises_when_missing() -> None:
 
     with pytest.raises(ImageNotFoundError, match="Image not found"):
         service.get_image_by_share_token("missing-token")
+
+
+def test_get_all_images_rejects_invalid_user_id() -> None:
+    service = GeneratedImagesService(
+        FakeGeneratedImagesRepository(), FakeTemplateRepository(None)
+    )
+
+    with pytest.raises(ValueError, match="Invalid user id"):
+        service.get_all_images(0)

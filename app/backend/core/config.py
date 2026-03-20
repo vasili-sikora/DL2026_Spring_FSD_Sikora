@@ -1,11 +1,70 @@
+import os
 from pathlib import Path
 from typing import Final
 
 BASE_DIR: Final[Path] = Path(__file__).resolve().parents[3]
-DATA_DIR: Final[Path] = BASE_DIR / "data"
-DB_PATH: Final[Path] = DATA_DIR / "app.db"
-GENERATED_IMAGES_DIR: Final[Path] = DATA_DIR / "generated_images"
-TEMPLATES_DIR: Final[Path] = DATA_DIR / "templates"
+
+
+def _load_env_file(env_path: Path) -> None:
+    if not env_path.exists():
+        return
+
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip("'").strip('"')
+        os.environ.setdefault(key, value)
+
+
+def _get_bool_env(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _get_int_env(name: str, default: int) -> int:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return int(value)
+
+
+def _get_path_env(name: str, default: Path) -> Path:
+    value = os.getenv(name)
+    if not value:
+        return default
+
+    candidate = Path(value)
+    if candidate.is_absolute():
+        return candidate
+    return BASE_DIR / candidate
+
+
+_load_env_file(BASE_DIR / ".env")
+
+DATA_DIR: Final[Path] = _get_path_env("DATA_DIR", BASE_DIR / "data")
+DB_PATH: Final[Path] = _get_path_env("DB_PATH", DATA_DIR / "app.db")
+GENERATED_IMAGES_DIR: Final[Path] = _get_path_env(
+    "GENERATED_IMAGES_DIR", DATA_DIR / "generated_images"
+)
+TEMPLATES_DIR: Final[Path] = _get_path_env("TEMPLATES_DIR", DATA_DIR / "templates")
 
 APP_DIR: Final[Path] = BASE_DIR / "app"
 FRONTEND_DIR: Final[Path] = APP_DIR / "frontend"
+
+SESSION_SECRET_KEY: Final[str] = os.getenv(
+    "SESSION_SECRET_KEY", "change-me-local-dev-only"
+)
+SESSION_COOKIE_NAME: Final[str] = os.getenv("SESSION_COOKIE_NAME", "devcraft_session")
+SESSION_COOKIE_SAMESITE: Final[str] = os.getenv("SESSION_COOKIE_SAMESITE", "lax")
+SESSION_COOKIE_SECURE: Final[bool] = _get_bool_env("SESSION_COOKIE_SECURE", False)
+SESSION_MAX_AGE_SECONDS: Final[int] = _get_int_env(
+    "SESSION_MAX_AGE_SECONDS", 60 * 60 * 24 * 7
+)
+
+SQLALCHEMY_DATABASE_URL: Final[str] = f"sqlite:///{DB_PATH}"

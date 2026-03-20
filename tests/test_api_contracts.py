@@ -6,8 +6,9 @@ from fastapi import HTTPException
 from pydantic import ValidationError
 from slowapi.errors import RateLimitExceeded
 from starlette.requests import Request
+from starlette.responses import Response
 
-from app.backend.api.auth_routes import login_user, register_user
+from app.backend.api.auth_routes import get_me, login_user, logout_user, register_user
 from app.backend.api.generated_images_routes import (
     generate_image,
     get_image_by_id,
@@ -22,7 +23,10 @@ from app.backend.api.templates_routes import (
     get_templates,
 )
 from app.backend.core.rate_limit import limiter
-from app.backend.models.generated_images import GenerateImageRequest
+from app.backend.models.generated_images import (
+    GenerateImageRequest,
+    PreviewImageRequest,
+)
 from app.backend.models.templates import TemplateCreate
 from app.backend.models.user import UserCreate, UserLogin
 from app.backend.services.exceptions import (
@@ -74,8 +78,11 @@ def test_auth_register_maps_service_error_to_http_400(
 
     monkeypatch.setattr("app.backend.api.auth_routes.service", _ServiceFail)
 
+    response = Response()
     with pytest.raises(HTTPException) as exc_info:
-        register_user(UserCreate(email="user@example.com", password="abcd1234"))
+        register_user(
+            UserCreate(email="user@example.com", password="abcd1234"), response
+        )
 
     assert exc_info.value.status_code == 400
     assert exc_info.value.detail == "Invalid payload"
@@ -91,12 +98,36 @@ def test_auth_login_with_emoji_password_success(
 
     monkeypatch.setattr("app.backend.api.auth_routes.service", _ServiceOk)
 
+    response = Response()
     result = login_user(
-        UserLogin(email="emoji.user@example.com", password="Пароль😀1234")
+        UserLogin(email="emoji.user@example.com", password="Пароль😀1234"),
+        response,
     )
 
     assert result["id"] == 7
     assert result["email"] == "emoji.user@example.com"
+
+
+def test_auth_me_returns_current_user(monkeypatch: pytest.MonkeyPatch) -> None:
+    class _ServiceOk:
+        @staticmethod
+        def get_user_by_id(user_id: int) -> dict[str, Any]:
+            return {"id": user_id, "email": "me@example.com", "is_admin": 0}
+
+    monkeypatch.setattr("app.backend.api.auth_routes.service", _ServiceOk)
+
+    result = get_me(5)
+
+    assert result["id"] == 5
+    assert result["email"] == "me@example.com"
+
+
+def test_auth_logout_returns_ok_message() -> None:
+    response = Response()
+
+    result = logout_user(response)
+
+    assert result["detail"] == "Logged out"
 
 
 def test_templates_list_and_get_by_id(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -170,7 +201,7 @@ def test_templates_image_returns_fileresponse(
 def test_generated_list_maps_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     class _GeneratedServiceMissing:
         @staticmethod
-        def get_all_images() -> list[dict[str, Any]]:
+        def get_all_images(_user_id: int) -> list[dict[str, Any]]:
             raise ImageNotFoundError("Images not found")
 
     monkeypatch.setattr(
@@ -179,7 +210,7 @@ def test_generated_list_maps_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        get_images()
+        get_images(1)
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "Images not found"
@@ -188,7 +219,7 @@ def test_generated_list_maps_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_generated_get_by_id_maps_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
     class _GeneratedServiceMissingById:
         @staticmethod
-        def get_image_by_id(image_id: int) -> dict[str, Any]:
+        def get_image_by_id(image_id: int, _user_id: int) -> dict[str, Any]:
             raise ImageNotFoundError("Image not found")
 
     monkeypatch.setattr(
@@ -197,7 +228,7 @@ def test_generated_get_by_id_maps_not_found(monkeypatch: pytest.MonkeyPatch) -> 
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        get_image_by_id(999)
+        get_image_by_id(999, 1)
 
     assert exc_info.value.status_code == 404
     assert exc_info.value.detail == "Image not found"
@@ -219,7 +250,9 @@ def test_generate_maps_domain_errors(
 ) -> None:
     class _GeneratedServiceError:
         @staticmethod
-        def generate_image(template_id: int, payload: Any) -> dict[str, Any]:
+        def generate_image(
+            template_id: int, payload: Any, _user_id: int
+        ) -> dict[str, Any]:
             raise exception_obj
 
     monkeypatch.setattr(
@@ -236,7 +269,7 @@ def test_generate_maps_domain_errors(
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        generate_image.__wrapped__(request, 1, payload)
+        generate_image.__wrapped__(request, 1, payload, 1)
 
     assert exc_info.value.status_code == expected_status
 
@@ -267,7 +300,7 @@ def test_preview_maps_errors(
     )
 
     request = make_request("POST", "/templates/1/preview")
-    payload = GenerateImageRequest(
+    payload = PreviewImageRequest(
         text_top="😀 TOP",
         text_bottom="BOTTOM 😺",
         font_name="dejavu_sans",
@@ -291,7 +324,7 @@ def test_preview_rate_limit_50_per_minute(monkeypatch: pytest.MonkeyPatch) -> No
         _GeneratedServiceOk,
     )
 
-    payload = GenerateImageRequest()
+    payload = PreviewImageRequest()
     for _ in range(50):
         request = make_request("POST", "/templates/1/preview", ip="10.0.0.1", port=5555)
         response = preview_image(request, 1, payload)
@@ -305,7 +338,9 @@ def test_preview_rate_limit_50_per_minute(monkeypatch: pytest.MonkeyPatch) -> No
 def test_generate_rate_limit_10_per_minute(monkeypatch: pytest.MonkeyPatch) -> None:
     class _GeneratedServiceOk:
         @staticmethod
-        def generate_image(template_id: int, payload: Any) -> dict[str, Any]:
+        def generate_image(
+            template_id: int, payload: Any, _user_id: int
+        ) -> dict[str, Any]:
             return {
                 "id": 1,
                 "template_id": template_id,
@@ -326,12 +361,12 @@ def test_generate_rate_limit_10_per_minute(monkeypatch: pytest.MonkeyPatch) -> N
         request = make_request(
             "POST", "/templates/1/generate", ip="10.0.0.2", port=6666
         )
-        response = generate_image(request, 1, payload)
+        response = generate_image(request, 1, payload, 1)
         assert response.id == 1
 
     request = make_request("POST", "/templates/1/generate", ip="10.0.0.2", port=6666)
     with pytest.raises(RateLimitExceeded):
-        generate_image(request, 1, payload)
+        generate_image(request, 1, payload, 1)
 
 
 def test_share_token_maps_not_found(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -375,4 +410,4 @@ def test_share_token_returns_file(
 
 def test_preview_payload_validation_rejects_small_font() -> None:
     with pytest.raises(ValidationError):
-        GenerateImageRequest(font_size=1)
+        PreviewImageRequest(font_size=1)

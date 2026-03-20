@@ -44,3 +44,13 @@ class UserRepo:
             row = cursor.fetchone()
 
             return dict(row) if row else None
+
+    def get_user_by_id(self, user_id: int) -> dict[str, Any] | None:
+        sql = """SELECT id, email, is_admin FROM users WHERE id = ?"""
+
+        with self._db_conn.get_conn() as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql, (user_id,))
+            row = cursor.fetchone()
+
+            return dict(row) if row else None
