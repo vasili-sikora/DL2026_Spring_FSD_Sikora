@@ -92,7 +92,7 @@ let isPasswordVisible = false;
 let adminPreviewObjectUrl = null;
 let adminLayoutPreviewObjectUrl = null;
 let selectedAdminTemplateId = null;
-const THEME_STORAGE_KEY = "dc_theme_v3";
+const THEME_STORAGE_KEY = "meme_studio_theme_v1";
 
 function showToast(message, isError = false) {
   toast.textContent = message;
@@ -622,15 +622,20 @@ function renderGeneratedImages(images) {
 
     const img = document.createElement("img");
     img.loading = "lazy";
-    img.alt = image.share_token;
+    img.alt = "Generated image";
     img.src = `/images/${image.share_token}`;
+
+    const templateName =
+      templatesById.get(Number(image.template_id))?.name || "Custom template";
+    const createdAt = image.created_at
+      ? new Date(image.created_at).toLocaleString()
+      : "";
 
     const meta = document.createElement("div");
     meta.className = "meta";
     meta.innerHTML = `
-      <strong>#${image.id}</strong>
-      <span>Template: ${image.template_id}</span>
-      <span>Token: ${image.share_token}</span>
+      <strong>${templateName}</strong>
+      ${createdAt ? `<span>${createdAt}</span>` : ""}
     `;
 
     const actions = document.createElement("div");
