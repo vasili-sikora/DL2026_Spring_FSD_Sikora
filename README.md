@@ -1,77 +1,44 @@
 # DevCraft Meme Studio
 
-FastAPI application for template-based image generation with:
-- user auth (cookie session)
-- template catalog and admin template management
-- generated images linked to the current user
-- static frontend served from the same app
+Template-based image generator on FastAPI with cookie auth and a built-in frontend.
 
-## Requirements
+## Features
 
-- Python 3.12+
-- `pip`
-- Linux/macOS/WSL (commands below are POSIX shell)
+- User registration and login
+- Template catalog
+- Image generation from templates
+- User-bound generated images
+- Admin template management
 
-## 1. Clone and enter project
-
-```bash
-git clone https://github.com/vasili-sikora/DL2026_Spring_FSD_Sikora
-cd DL2026_Spring_FSD_Sikora
-```
-
-## 2. Create virtual environment
+## Quick Start
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install --upgrade pip
 pip install -r requirements.txt
-```
-
-## 3. Configure environment
-
-```bash
 cp .env.example .env
-```
-
-Minimal local setup from `.env`:
-- `DB_PATH=data/app.db`
-- `SESSION_SECRET_KEY=<random-secret>`
-- `SESSION_COOKIE_SECURE=false` (for local HTTP)
-
-## 4. Run database migrations
-
-```bash
 .venv/bin/alembic upgrade head
+.venv/bin/uvicorn app.backend.main:app --host 127.0.0.1 --port 8000
 ```
 
-## 5. Start application
+Open: http://127.0.0.1:8000
+
+## Run Tests
 
 ```bash
-.venv/bin/uvicorn app.backend.main:app --host 127.0.0.1 --port 8000 --reload
+.venv/bin/pytest -q
 ```
 
-Open in browser:
-- http://127.0.0.1:8000
+## Developer Documentation
 
-## Useful commands
+Detailed developer guide is available in [README.dev.md](README.dev.md).
 
-### Create or promote admin user
-
-```bash
-# Promote existing user
-.venv/bin/python -m app.backend.scripts.manage_admin --email you@example.com
-
-# Or create new admin if user does not exist
-.venv/bin/python -m app.backend.scripts.manage_admin --email you@example.com --password 'StrongPass123'
-```
-
-## Project structure 
+## Project Structure
 
 - `app/backend/main.py` - FastAPI app entry point
-- `app/backend/api/` - HTTP routes
+- `app/backend/api/` - API routes
 - `app/backend/services/` - business logic
-- `app/backend/repositories/` - DB queries
-- `app/backend/models/` - Pydantic request/response models
+- `app/backend/repositories/` - DB access layer
+- `app/backend/models/` - Pydantic schemas
 - `alembic/` - DB migrations
 - `app/frontend/` - static frontend
